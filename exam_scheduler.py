@@ -1,38 +1,48 @@
 import pandas as pd
-import random
 from datetime import timedelta
+import data_processing as dp
 
+start_date = '2024-06-30'
+end_date = '2024-09-12'
+
+# List of dates to exclude based on word file (holidays, fast ...etc)
+dates_to_exclude = ['2024-07-04','2024-07-05','2024-07-23',
+                    '2024-07-24','2024-08-06','2024-08-06',
+                    '2024-08-07','2024-08-08','2024-08-09',
+                    '2024-08-13','2024-08-14','2024-08-25',
+                    '2024-08-26','2024-08-27','2024-08-28',
+                    '2024-08-29','2024-08-30','2024-09-02',
+                    '2024-09-03','2024-09-10','2024-09-11',
+                    '2024-09-12']
 class ExamScheduler:
-    def __init__(self,start_date, end_date, dates_to_exclude, courses_dict,programs_dict, code_dict, external_file=None) -> None:
+    def __init__(self, df, start_date=start_date, end_date=end_date, dates_to_exclude=dates_to_exclude,external_file=None):
         self.start_date = start_date
         self.end_date = end_date
         self.dates_to_exclude = dates_to_exclude
-        self.courses_dict = courses_dict
-        self.programs_dict = programs_dict
-        self.code_dict = code_dict
-        self.courses_list = list(courses_dict.keys())
-        self.df_dates = self.create_df_dates()
+        self.df = df
         self.external_file = external_file
+        self.courses_dict =  dp.get_courses_dict(df)
+        self.programs_dict = dp.get_programs_dict(df)
+        self.code_dict = dict(zip(df['קוד'], df['שם']))
+        self.courses_list = list(self.courses_dict.keys())
+        self.exam_schedule = self.create_exam_schedule()
         self.blocked_dates  = self.create_blocked_dates()
         
-        if self.external_file:
-            self.blocked_dates = self.get_limit_dict_from_external_file()
-        
-    def create_df_dates(self):
+    def create_exam_schedule(self):
         """  
         Generate dataframe of possible dates for exams.
         """
         # Convert the date range to a list
         dates_range = pd.date_range(start=self.start_date, end=self.end_date)
         # Show it as a DataFrame with column 'date'    
-        df_dates = pd.DataFrame(data=dates_range, columns=['date'])
+        exam_schedule = pd.DataFrame(data=dates_range, columns=['date'])
         # Filter out Shabbat days
-        df_dates = df_dates[df_dates['date'].dt.day_name() != 'Saturday']
+        exam_schedule = exam_schedule[exam_schedule['date'].dt.day_name() != 'Saturday']
         # Filter out excluded dates
-        df_dates = df_dates[~df_dates.date.isin(self.dates_to_exclude)].reset_index(drop=True)
+        exam_schedule = exam_schedule[~exam_schedule.date.isin(self.dates_to_exclude)].reset_index(drop=True)
         # Add column of exam with empty list  
-        df_dates['exam'] = [[] for _ in range(len(df_dates))]
-        return df_dates   
+        exam_schedule['exam'] = [[] for _ in range(len(exam_schedule))]
+        return exam_schedule   
         
     def get_crossed_courses(self, course:int) -> set:
         """
@@ -50,26 +60,22 @@ class ExamScheduler:
         
         return crossed_courses
     
-    def get_random_course(self)-> str|None:
+    def get_course(self):
         """  
         This function choose course  from a list and check if it fits well.
         if not  - it keeps trying until it goes all over the list 
         """
         for course in self.courses_list:
-            # Randomly choose course from list
-            random_course = random.choice(self.courses_list)
             # In case the chosen course is not in black list
-            if random_course not in self.blocked_dates:
-                return random_course
-            # If the course in black list
-            attempts +=1
+            if course not in self.blocked_dates:
+                return course
         # When there was no luck after max_attempts attempts return False
         return False
 
 
     def handle_blacklist(self, course:int, current_date: pd.Timestamp, gap:int):
         """   
-        This function create blacklist initialy or update it 
+        This function update blocked date s  
         """
         crossed_courses = self.get_crossed_courses(course)
         # When there was no new crossed courses to add to blacklist
@@ -101,12 +107,40 @@ class ExamScheduler:
             del self.blocked_dates[course]
 
     def create_blocked_dates(self):
-        if not self.external_file:
+        limit_dicts = self.get_limit_dict_from_external_file(self.external_file)
+        return limit_dicts
+    
+    def schedule_exams(self ,max_iterations=2):
+        iteration_count = 0
+        while self.courses_list and iteration_count < max_iterations:
+            iteration_count +=1
+            # iterate over all possible dates
+            for index ,row in self.exam_schedule.iterrows():
+                # Get the date 
+                current_date = row['date'].date()
+                # Check blacklist 
+                self.check_blacklist_dayly(current_date)
+                # Get random course 
+                course = self.get_course()
+                # In case no course avaliable, skip to next date
+                if not course:
+                    continue
+                # When course was found - remove it from coureses list
+                self.courses_list.remove(course)
+                # Schedule the course in the date 
+                self.exam_schedule.at[index,'exam'].append(course)
+                # Update blacklist accroding to new course
+                self.handle_blacklist(course, current_date, gap=4)
+            if iteration_count >= max_iterations:
+                print(f'Warning: Maximum iterations reached. {self.courses_list} not be scheduled.')
+     
+        self.exam_schedule['exam_name'] = self.exam_schedule['exam'].apply(lambda x: [self.code_dict[code] for code in x])
+
+    @staticmethod   
+    def get_limit_dict_from_external_file(file=None) -> dict:
+        if file is None:
             return {}
-        return self.get_limit_dict_from_external_file(self.external_file)
-        
-    def get_limit_dict_from_external_file(self, file:str) -> dict:
-        df = pd.read_excel(self.external_file)
+        df = pd.read_excel(file)
         new_cols = {col: col.strip() for col in df.columns}
         df.rename(columns=new_cols, inplace=True)
         df.rename(columns={'קוד קורס':'קוד'},inplace=True)
@@ -117,35 +151,3 @@ class ExamScheduler:
             end = row['סוף']
             limit_dict[course] = pd.date_range(start=start, end=end)
         return limit_dict 
-    
-    def schedule_exams(self ,max_iterations=2):
-        df_dates = self.create_df_dates()
-        iteration_count = 0
-        while self.courses_list and iteration_count < max_iterations:
-            iteration_count +=1
-            # iterate over all possible dates
-            for index ,row in df_dates.iterrows():
-                self.create_blocked_dates()
-                # In case there are no more courses to schedule exit the loop
-                if not self.courses_list:
-                    break
-                # Get the date 
-                current_date = row['date'].date()
-                # Check blacklist 
-                self.check_blacklist_dayly(current_date)
-                # Get random course 
-                course = self.get_random_course()
-                # In case no course avaliable, skip to next date
-                if not course:
-                    continue
-                # When course was found - remove it from coureses list
-                self.courses_list.remove(course)
-                # Schedule the course in the date 
-                df_dates.at[index,'exam'].append(course)
-                # Update blacklist accroding to new course
-                self.handle_blacklist(course, current_date, gap=4)
-            if iteration_count >= max_iterations:
-                print(f'Warning: Maximum iterations reached. {self.courses_list} not be scheduled.')
-     
-        df_dates['exam_name'] = df_dates['exam'].apply(lambda x: [self.code_dict[code] for code in x])
-        return df_dates

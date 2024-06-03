@@ -2,9 +2,9 @@ import pandas as pd
 from utils import handle_course_code_value, filter_out_based_on_values
 
 # אפיונים
-def get_ifunim_dataframe():
+def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפיינים לקורס.xlsx'):
     # Read Excel file headers is the second row (header=1)
-    df = pd.read_excel('כלכלה תשפד_רשימת מאפיינים לקורס.xlsx',header=1)
+    df = pd.read_excel(file, header=1)
 
     #  Shorten the column's names for convineince 
     df.rename(columns={'שם קורס':'שם','מס\' קורס':'קוד'},inplace=True)
@@ -33,9 +33,9 @@ def get_ifunim_dataframe():
 
 # קובץ קורסים
 
-def get_courses_dataframe():
+def get_courses_dataframe_from_file(file='כלכלה סמב תשפד.xlsx'):
     # Read Excel file, columns in first row (headers=0)
-    df = pd.read_excel('כלכלה סמב תשפד.xlsx',header=0)
+    df = pd.read_excel(file, header=0)
 
     # Shorten the column's names for convineince 
     df.rename(columns={'קוד מלא':'קוד'},inplace=True)
@@ -56,6 +56,13 @@ def get_courses_dataframe():
     
     return df
 
+def merge_ifunim_and_coursim(df_ifunim, df_courses):
+    df = pd.merge(df_ifunim,df_courses,on='קוד', how='left')
+
+    # Replace NAN values with zero, and convert to integer
+    df['students'] = df['students'].fillna(0).astype(int)
+
+    return df
 
 def get_courses_dict(df, key_str='קוד', path_col='אפיון'):
     # מילון מפתח קורסים
