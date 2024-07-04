@@ -113,6 +113,7 @@ class ExamScheduler:
     def schedule_exams(self ,max_iterations=2):
         iteration_count = 0
         while self.courses_list and iteration_count < max_iterations:
+            print(f'iteration_count is {iteration_count}')
             iteration_count +=1
             # iterate over all possible dates
             for index ,row in self.exam_schedule.iterrows():

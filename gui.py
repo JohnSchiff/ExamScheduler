@@ -9,7 +9,7 @@ class ExamScheduleApp:
     def __init__(self, root):
         self.root = root
         self.root.title("שיבוץ בחינות")
-        self.root.geometry("800x800")
+        self.root.geometry("800x1200")
         self.external_file = None
         self.test_files_imported = False
         self.ifunim_imported = False
@@ -20,13 +20,15 @@ class ExamScheduleApp:
         # Load and resize the image
         image = Image.open('BIU_LOGO.jpg')  # Replace with your image path
         image = image.resize((150, 150), Image.LANCZOS)  # Resize as needed
-        # Convert the Image object into a Tkinter-compatible photo image
         self.photo = ImageTk.PhotoImage(image)
         
-        # Create a Label widget to display the image
-        self.logo_label = ttk.Label(self.root, image=self.photo)
-        self.logo_label.grid(row=0, column=0, sticky="ne", padx=10, pady=10) 
-        self.root.grid_columnconfigure(0, weight=1)
+        # Create a frame for the logo
+        logo_frame = ttk.Frame(self.root)
+        logo_frame.pack(pady=1, anchor="ne",fill="both")
+        self.logo_label = ttk.Label(logo_frame, image=self.photo)
+        self.logo_label.pack(side='right')
+        s = ttk.Label(logo_frame, text=' מערכת שיבוץ בחינות',font=("Helvetica", 22, "bold"), foreground='black')
+        s.pack(side="left", expand=True)
 
         
         self.columns = ("תאריך", "קוד קורס", "שם קורס")
@@ -39,54 +41,62 @@ class ExamScheduleApp:
         style.configure("TButton", font=("Helvetica", 14), padding=5)
         style.configure("TEntry", font=("Helvetica", 14), padding=5)
         style.configure("TLabel", font=("Helvetica", 14))
-        style.configure("Treeview", font=("Helvetica", 14))
+        style.configure("Treeview", background="lightblue", font=("Helvetica", 14))
         style.configure("Treeview.Heading", font=("Helvetica", 14, "bold"))
         
         # Custom style for red asterisk
         style.configure("Red.TLabel", foreground="red", font=("Helvetica", 16, "bold"))
 
     def create_widgets(self):
-        # Create a frame for the buttons
-        button_frame = ttk.Frame(self.root)
-        button_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        button_frame.grid_columnconfigure(0, weight=1)
-        # Add buttons to the frame
-        self.export_button = ttk.Button(button_frame, text="ייצוא לאקסל", command=self.export_to_excel, state=DISABLED)
-        self.export_button.grid(row=0, column=0, padx=5, sticky='e')
 
-        self.process_button = ttk.Button(button_frame, text="צור לוח בחינות", command=self.process_data, state=DISABLED)
-        self.process_button.grid(row=0, column=1, padx=5, sticky='e')
+        entries_frame = ttk.Frame(self.root)
+        entries_frame.pack(fill='x')
+# 
+        self.import_limitations_button = ttk.Button(entries_frame, text="קובץ מגבלות", command=lambda: self.import_file('get_limitations_from_another_file', self.import_limitations_entry, 'external_file'))
+        self.import_limitations_button.pack(padx=5, pady=5, side="right")
+        self.import_limitations_entry = ttk.Entry(entries_frame)
+        self.import_limitations_entry.pack(side='left', fill='x', expand=True, padx=5, pady=5)
+        
+        entries_frame2 = ttk.Frame(self.root)
+        entries_frame2.pack(fill='x')
+        self.import_courses_button = ttk.Button(entries_frame2, text="קובץ קורסים", command=lambda: self.import_file('get_courses_dataframe_from_file', self.import_courses_entry, 'df_courses'))
+        self.import_courses_button.pack(side="right", padx=5)
+        self.import_courses_entry = ttk.Entry(entries_frame2)
+        self.import_courses_entry.pack(side='left', fill='x', expand=True, padx=5, pady=5)
+        self.asterisk_label = ttk.Label(entries_frame2, text="*", foreground="red")
+        self.asterisk_label.pack(side='right')
+        
+        
+        entries_frame3 = ttk.Frame(self.root)
+        entries_frame3.pack(fill='x')
+        self.import_ifunim_button = ttk.Button(entries_frame3, text="קובץ אפיונים", command=lambda: self.import_file('get_ifunim_dataframe_from_file', self.import_ifunim_entry, 'df_ifunim'))
+        self.import_ifunim_button.pack(side="right", padx=5)
+        self.import_ifunim_entry = ttk.Entry(entries_frame3)
+        self.import_ifunim_entry.pack(side='left', fill='x', expand=True, padx=5, pady=5)
+        self.asterisk_label2 = ttk.Label(entries_frame3, text="*", foreground="red")
+        self.asterisk_label2.pack(side='right')
 
-        self.import_limitations_entry = ttk.Entry(button_frame)
-        self.import_limitations_entry.grid(row=1, column=0, padx=5,pady=10 ,sticky='ew')
-        self.import_limitations_button = ttk.Button(button_frame, text="קובץ מגבלות", command= lambda:self.import_file('get_limitations_from_another_file',self.import_limitations_entry,'external_file'))
-        self.import_limitations_button.grid(row=0, column=2, padx=5, sticky='e')
         
-        self.import_courses_entry = ttk.Entry(button_frame)
-        self.import_courses_entry.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
-        self.courses_asterisk = ttk.Label(button_frame, text="*", font=("Helvetica", 16, "bold"), style="Red.TLabel")
-        self.courses_asterisk.grid(row=1, column=1, padx=5, pady=5, sticky='w')
-        self.import_courses_button = ttk.Button(button_frame, text="קובץ קורסים ", command= lambda:self.import_file('get_courses_dataframe_from_file',self.import_courses_entry,'df_courses'))
-        self.import_courses_button.grid(row=0, column=3, padx=5,pady=5, sticky='e')
-        
-        self.import_ifunim_entry = ttk.Entry(button_frame)
-        self.import_ifunim_entry.grid(row=1, column=2, pady=10, sticky='ew')
-        self.ifunim_asterisk = ttk.Label(button_frame, text="*",style="Red.TLabel", font=("Helvetica", 16, "bold"))
-        self.ifunim_asterisk.grid(row=1, column=2, padx=5, pady=5, sticky='w')
-        self.import_ifunim_button = ttk.Button(button_frame, text="קובץ אפיונים ", command=lambda:self.import_file('get_ifunim_dataframe_from_file',self.import_ifunim_entry,'df_ifunim'))
-        self.import_ifunim_button.grid(row=0, column=4, padx=5, pady=5, sticky='e')
-        
+        entries_frame4 = ttk.Frame(self.root)
+        entries_frame4.pack(fill='x')
+        self.process_button = ttk.Button(entries_frame4, text="צור לוח בחינות", command=self.process_data, state=DISABLED)
+        self.process_button.pack(padx=5, pady=5)
 
-        # Create a Treeview widget
+
+
+        # Create a frame for the Treeview widget
         tree_frame = ttk.Frame(self.root)
-        tree_frame.grid(row=2, column=0,  padx=10, pady=10, sticky='nsew')
-        tree_frame.grid_columnconfigure(0, weight=1)
-        tree_frame.grid_rowconfigure(0, weight=1)
-        
+        tree_frame.pack(fill="both", expand=True)
+
         self.tree = ttk.Treeview(tree_frame, columns=self.columns, show='headings')
-        self.tree.grid(row=2, column=0, sticky='nsew')
-        # self.tree.grid_columnconfigure(0, weight=1)
-        # self.tree.grid_rowconfigure(0, weight=1)
+        self.tree.pack(fill="both", expand=True)
+        # Add headings to the Treeview
+        for col in self.columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, anchor="center")
+            
+        self.export_button = ttk.Button(self.root, text="ייצוא לאקסל", command=self.export_to_excel, state=DISABLED)
+        self.export_button.pack(padx=5, pady=5)
         
     def display_data_in_gui(self, data):
         # Define the column headings
@@ -120,6 +130,10 @@ class ExamScheduleApp:
         # Open file dialog to select Excel files
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if file_path:
+            import pdb  
+            import rlcompleter
+            pdb.Pdb.complete=rlcompleter.Completer(locals()).complete
+            pdb.set_trace() 
             # Load the Excel file into a DataFrame using the appropriate method
             dataframe = getattr(dp, dp_function_name)(file_path)
             setattr(self, dataframe_attribute, dataframe)
@@ -131,9 +145,8 @@ class ExamScheduleApp:
             # Check if ready to process
             self.check_ready_to_process()
             # Update the entry widget with the file path
-            file_path_display = self.file_path_name_to_display(file_path)
             entry_widget.delete(0, 'end')
-            entry_widget.insert(0, file_path_display)
+            entry_widget.insert(0, file_path)
         
     def check_ready_to_process(self):
         if self.test_files_imported and self.ifunim_imported:
@@ -147,11 +160,6 @@ class ExamScheduleApp:
         self.export_button.config(state=NORMAL)
         data = list(aa.exam_schedule.itertuples(index=False, name=None))
         self.display_data_in_gui(data=data)
-    
-    @staticmethod
-    def file_path_name_to_display(file_name):
-        name_display = file_name.split('/')[-1].split('.xlsx')[0]
-        return name_display
     
 # Create the main application window ThemedTk
 if __name__ == "__main__": 
