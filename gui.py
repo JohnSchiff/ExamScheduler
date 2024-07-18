@@ -3,7 +3,19 @@ import data_processing as dp
 from tkinter import ttk, filedialog, messagebox,NORMAL,DISABLED
 import pandas as pd
 from ttkthemes import ThemedTk
+from tktooltip import ToolTip
 from PIL import Image, ImageTk
+import os 
+import sys
+
+def resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 class ExamScheduleApp:
     def __init__(self, root):
@@ -15,10 +27,11 @@ class ExamScheduleApp:
         self.ifunim_imported = False
         self.df_ifunim = None
         self.df_courses = None
-        
-        
+    
+
         # Load and resize the image
-        image = Image.open('BIU_LOGO.jpg')  # Replace with your image path
+        image_path = resource_path('BIU_LOGO.jpg')
+        image = Image.open(image_path)  # Replace with your image path
         image = image.resize((150, 150), Image.LANCZOS)  # Resize as needed
         self.photo = ImageTk.PhotoImage(image)
         
@@ -54,13 +67,15 @@ class ExamScheduleApp:
 # 
         self.import_limitations_button = ttk.Button(entries_frame, text="קובץ מגבלות", command=lambda: self.import_file('get_limitations_from_another_file', self.import_limitations_entry, 'external_file'))
         self.import_limitations_button.pack(padx=5, pady=5, side="right")
+        ToolTip(self.import_limitations_button, msg='קובץ מגבלות  ממחלקות אחרות ', follow=True)
         self.import_limitations_entry = ttk.Entry(entries_frame)
         self.import_limitations_entry.pack(side='left', fill='x', expand=True, padx=5, pady=5)
-        
+                
         entries_frame2 = ttk.Frame(self.root)
         entries_frame2.pack(fill='x')
         self.import_courses_button = ttk.Button(entries_frame2, text="קובץ קורסים", command=lambda: self.import_file('get_courses_dataframe_from_file', self.import_courses_entry, 'df_courses'))
         self.import_courses_button.pack(side="right", padx=5)
+        ToolTip(self.import_courses_button, msg='קובץ קורסים של המחלקה לכלכלה', follow=True)
         self.import_courses_entry = ttk.Entry(entries_frame2)
         self.import_courses_entry.pack(side='left', fill='x', expand=True, padx=5, pady=5)
         self.asterisk_label = ttk.Label(entries_frame2, text="*", foreground="red")
@@ -71,6 +86,7 @@ class ExamScheduleApp:
         entries_frame3.pack(fill='x')
         self.import_ifunim_button = ttk.Button(entries_frame3, text="קובץ אפיונים", command=lambda: self.import_file('get_ifunim_dataframe_from_file', self.import_ifunim_entry, 'df_ifunim'))
         self.import_ifunim_button.pack(side="right", padx=5)
+        ToolTip(self.import_ifunim_button, msg='קובץ אפיונים לכלכלה', follow=True)
         self.import_ifunim_entry = ttk.Entry(entries_frame3)
         self.import_ifunim_entry.pack(side='left', fill='x', expand=True, padx=5, pady=5)
         self.asterisk_label2 = ttk.Label(entries_frame3, text="*", foreground="red")
@@ -95,7 +111,9 @@ class ExamScheduleApp:
             self.tree.heading(col, text=col)
             self.tree.column(col, anchor="center")
             
-        self.export_button = ttk.Button(self.root, text="ייצוא לאקסל", command=self.export_to_excel, state=DISABLED)
+        export_frame = ttk.Frame(self.root)
+        export_frame.pack(fill="both", expand=True)
+        self.export_button = ttk.Button(export_frame, text="ייצוא לאקסל", command=self.export_to_excel, state=DISABLED)
         self.export_button.pack(padx=5, pady=5)
         
     def display_data_in_gui(self, data):
@@ -130,35 +148,40 @@ class ExamScheduleApp:
         # Open file dialog to select Excel files
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if file_path:
-            import pdb  
-            import rlcompleter
-            pdb.Pdb.complete=rlcompleter.Completer(locals()).complete
-            pdb.set_trace() 
-            # Load the Excel file into a DataFrame using the appropriate method
-            dataframe = getattr(dp, dp_function_name)(file_path)
-            setattr(self, dataframe_attribute, dataframe)
-            # Set the file imported flag if applicable
-            if dataframe_attribute == 'df_courses':
-                self.test_files_imported = True
-            elif dataframe_attribute == 'df_ifunim':
-                self.ifunim_imported = True
+            # # Load the Excel file into a DataFrame using the appropriate method
+            # dataframe = getattr(dp, dp_function_name)(file_path)
+            # setattr(self, dataframe_attribute, dataframe)
+            # # Set the file imported flag if applicable
+            # if dataframe_attribute == 'df_courses':
+            #     self.test_files_imported = True
+            # elif dataframe_attribute == 'df_ifunim':
+            #     self.ifunim_imported = True
             # Check if ready to process
-            self.check_ready_to_process()
             # Update the entry widget with the file path
             entry_widget.delete(0, 'end')
             entry_widget.insert(0, file_path)
-        
-    def check_ready_to_process(self):
-        if self.test_files_imported and self.ifunim_imported:
+            
+            self.check_ready_to_gen_exams_schdule_schdule()
+    
+     
+    
+    def check_ready_to_gen_exams_schdule_schdule(self):
+        if self.import_ifunim_entry.get() and self.import_courses_entry.get():
             self.process_button.config(state=NORMAL)
 
     def process_data(self):
+        ifunim_file = self.import_ifunim_entry.get()
+        df_ifunim = dp.get_ifunim_dataframe_from_file(ifunim_file)
+        courses_file = self.import_courses_entry.get()
+        df_courses = dp.get_courses_dataframe_from_file(courses_file)
+        limitations_file = self.import_limitations_entry.get()
+        
         # Placeholder function for data processing
-        df = dp.merge_ifunim_and_coursim(self.df_ifunim, self.df_courses)
-        aa = ExamScheduler(df, external_file= self.external_file)
-        aa.schedule_exams()
+        df = dp.merge_ifunim_and_coursim(df_ifunim, df_courses)
+        exam_scheduler = ExamScheduler(df, external_file=limitations_file)
+        exam_scheduler.schedule_exams()
         self.export_button.config(state=NORMAL)
-        data = list(aa.exam_schedule.itertuples(index=False, name=None))
+        data = list(exam_scheduler.exam_schedule.itertuples(index=False, name=None))
         self.display_data_in_gui(data=data)
     
 # Create the main application window ThemedTk
