@@ -1,5 +1,4 @@
 import pandas as pd
-from utils import handle_course_code_value, filter_out_based_on_values
 
 ifunim_dict = {
 'אפיון':'spec',
@@ -17,6 +16,32 @@ courses_file_dict = {
 'שם': 'course_name',
 'קוד מלא': 'course_code',
             }
+
+def filter_out_based_on_values(df: pd.DataFrame, col: int|str, values: list) -> pd.DataFrame:
+    if not isinstance(values, list):
+        values = [values] 
+    df = df.loc[~ df[col].isin(values)]
+    return df
+
+
+def handle_course_code_value(df):
+    """
+    Convert code from string to integer
+    """
+    kod = 'course_code'
+    if kod not in df.columns:
+        return print(f'must have {kod} column')
+    # Ensure DataFrame is a copy to avoid issues with views
+    df = df.copy()
+    # Get code course without sub-course, i.e the dash sign
+    df[kod] = df[kod].str.split('-').str[0].str.strip()
+    # Convert to numneric
+    df[kod] = pd.to_numeric(df[kod], errors='coerce', downcast='integer')
+    # Drop rows with No code for course
+    df = df.dropna(subset=kod)
+    # Convert from Float to Int
+    df[kod] = df[kod].astype('Int32')
+    return df
 
 # אפיונים
 def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפיינים לקורס.xlsx',semester=2):

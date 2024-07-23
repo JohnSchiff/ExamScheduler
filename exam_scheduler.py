@@ -7,7 +7,7 @@ import data_processing as dp
 class ExamScheduler:
     def __init__(self, data_from_files, start_date,
                  end_moed_alef_date,end_moed_bet_date=None,semester=2,
-                 limitiaons_file=None, start_of_semester2_date=None, moed_c=False,gap=2):
+                 limitiaons_file=None, start_of_semester2_date=None, moed_c=False,gap=4):
 
         ## Dates ##
         self.start_date = start_date
@@ -223,12 +223,12 @@ class ExamScheduler:
                 continue
             current_date = row['date']
             crossed_courses = self.crossed_course_dict[curernt_course]
-            date_range = pd.date_range(start=current_date - pd.Timedelta(days=2), end=current_date + pd.Timedelta(days=2))
+            date_range = pd.date_range(start=current_date - pd.Timedelta(days=self.gap), end=current_date + pd.Timedelta(days=self.gap))
             for date in date_range:
                 courses_on_date = self.exam_schedule_table[self.exam_schedule_table['date'] == date]['code'].explode().tolist()
                 # break
                 for crossed_course in crossed_courses:
                     if crossed_course in courses_on_date:
-                        raise ValueError(f'Conflict detected: Crossed course {crossed_course} on {date} conflicts with {curernt_course} on {current_date}')
+                        raise ValueError(f'Conflict detected: Crossed course {crossed_course} on {date} conflicts with {curernt_course} on {current_date} gap: {self.gap}')
                 
-        print('OK')
+        print(f'gap of {self.gap} days is OK')
