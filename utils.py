@@ -47,15 +47,17 @@ def handle_course_code_value(df):
     """
     Convert code from string to integer
     """
-    kod = 'קוד'
+    kod = 'course_code'
     if kod not in df.columns:
         return print(f'must have {kod} column')
+    # Ensure DataFrame is a copy to avoid issues with views
+    df = df.copy()
     # Get code course without sub-course, i.e the dash sign
     df[kod] = df[kod].str.split('-').str[0].str.strip()
     # Convert to numneric
-    df[kod] = pd.to_numeric(df[kod], errors='coerce')
+    df[kod] = pd.to_numeric(df[kod], errors='coerce', downcast='integer')
     # Drop rows with No code for course
     df = df.dropna(subset=kod)
     # Convert from Float to Int
-    df.loc[:,kod] = df[kod].astype(int)
+    df[kod] = df[kod].astype('Int32')
     return df

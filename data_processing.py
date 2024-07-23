@@ -1,35 +1,52 @@
 import pandas as pd
 from utils import handle_course_code_value, filter_out_based_on_values
 
+ifunim_dict = {
+'אפיון':'spec',
+'חדר': 'room',
+'אופן הוראה': 'teaching',
+'שם קורס':'course_name',
+'מס\' קורס':'course_code',
+'סמסטר': 'semester',
+'מס\'' : 'num'
+            }
+
+courses_file_dict = {
+'סוג מפגש':'teaching',
+'לומדים': 'students',
+'שם': 'course_name',
+'קוד מלא': 'course_code',
+            }
+
 # אפיונים
 def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפיינים לקורס.xlsx',semester=2):
     # Read Excel file headers is the second row (header=1)
     df = pd.read_excel(file, header=1)
 
-    #  Shorten the column's names for convineince 
-    df.rename(columns={'שם קורס':'שם','מס\' קורס':'קוד'},inplace=True)
+    #  Rename columns to English 
+    df.columns = df.columns.map(ifunim_dict)
 
     df = handle_course_code_value(df)
 
     # Filter out תרגיל וסמינריון 
-    df = filter_out_based_on_values(df, col='אופן הוראה',values=['תרגיל','סמינריון'])
+    df = filter_out_based_on_values(df, col='teaching',values=['תרגיל','סמינריון'])
 
     # Drop duplicates by code
-    df = df.drop_duplicates(subset='קוד')
+    df = df.drop_duplicates(subset='course_code')
     if semester==2:
         # Filter only Second semester
-        df = df.loc[df['סמסטר'] =='ב']
+        df = df.loc[df['semester'] =='ב']
     elif semester ==1:
-        df = df.loc[df['סמסטר'] =='א']
+        df = df.loc[df['semester'] =='א']
         
     # Keep only relevant columns
-    df = df[['אפיון','שם','קוד']].reset_index(drop=True)
+    df = df[['spec','course_name','course_code']].reset_index(drop=True)
 
     # Make list of instead of big string
-    df['אפיון'] = df['אפיון'].str.split(',')
+    df['spec'] = df['spec'].str.split(',')
 
     # Convert to integer from float
-    df['קוד'] = df['קוד'].astype(int)
+    df['course_code'] = df['course_code'].astype(int)
     
     return df
 
@@ -37,36 +54,36 @@ def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפי
 
 def get_courses_dataframe_from_file(file='כלכלה סמב תשפד.xlsx'):
     # Read Excel file, columns in first row (headers=0)
-    df = pd.read_excel(file, header=0)
+    df = pd.read_excel(file)
 
-    # Shorten the column's names for convineince 
-    df.rename(columns={'קוד מלא':'קוד'},inplace=True)
+    # Rename columns to English 
+    df.columns = df.columns.map(courses_file_dict)
 
     # Get code course without sub-course, i.e the dash sign
     df = handle_course_code_value(df)
     # Filter out תרגיל וסמינריון 
-    df = filter_out_based_on_values(df, col='סוג מפגש',values=['תרגיל','סמינריון'])
-
-    # Get total number os סטודנטים per course, maybe we will use it later
-    df['סטודנטים'] = df.groupby('קוד')['לומדים'].transform('sum')
-
-    # # Drop duplicates by code
-    df.drop_duplicates(subset='קוד',inplace=True)
-
-    # # Keep relevant columns 
-    df = df [['קוד','סטודנטים']].reset_index(drop=True)
+    df = filter_out_based_on_values(df, col='teaching',values=['תרגיל','סמינריון'])
+    
+    if 'students' in df.columns:
+        # Get total number os סטודנטים per course, maybe we will use it later
+        df['num_of_students'] = df.groupby('course_code')['students'].transform('sum')
+        # Keep relevant columns 
+        df = df [['course_code','num_of_students']].drop_duplicates(subset='course_code').reset_index(drop=True)    
+    else:
+        # Keep relevant columns         # Drop duplicates by code
+        df = df [['course_code']].drop_duplicates(subset='course_code').reset_index(drop=True)
     
     return df
-
+    
 def merge_ifunim_and_coursim(df_ifunim, df_courses):
-    df = pd.merge(df_ifunim,df_courses,on='קוד', how='left')
-
+    df = pd.merge(df_ifunim,df_courses,on='course_code', how='left')
+    if 'num_of_students' in df.columns:
     # Replace NAN values with zero, and convert to integer
-    df['סטודנטים'] = df['סטודנטים'].fillna(0).astype(int)
-
+        df['num_of_students'] = df['num_of_students'].fillna(0).astype(int)
     return df
 
-def get_courses_dict(df, key_str='קוד', path_col='אפיון'):
+
+def get_courses_dict(df, key_str='course_code', path_col='spec'):
     # מילון מפתח קורסים
     courses_dict = {}
     # Iterate all rows 
@@ -75,7 +92,6 @@ def get_courses_dict(df, key_str='קוד', path_col='אפיון'):
         courses_dict[row[key_str]] = []
         for path in row[path_col]:
             courses_dict[row[key_str]].append(path)
-            
     return courses_dict
 
 
@@ -84,12 +100,12 @@ def get_programs_dict(df):
     # Iterate all rows 
     for index, row in df.iterrows():
         # Set key - the name of program 
-        for path in row['אפיון']:
+        for path in row['spec']:
             # Generate inital if not exists
             if path not in programs_dict:
                 programs_dict[path] = []
             # If exists add course to program
-            programs_dict[path].append(row['קוד'])
+            programs_dict[path].append(row['course_code'])
     return programs_dict
 
 
@@ -100,6 +116,7 @@ def gen_list_of_dates_in_range(df)-> list:
         end_date = row['end']
         days_to_exclude.extend(pd.date_range(start=start_date, end=end_date).tolist())
     return days_to_exclude
+
 
 def parse_limit_files(limit_file):
     limit_file_cols_dict = {
@@ -114,6 +131,7 @@ def parse_limit_files(limit_file):
     df['end'] = pd.to_datetime(df['end'],dayfirst=True)
     df['start'] = pd.to_datetime(df['start'],dayfirst=True)
     return df
+
 
 def get_unavailable_dates_from_limit_file(limit_file=None):
     if limit_file is None:
@@ -148,6 +166,7 @@ def filter_sunday_thursday(df, specified_date):
     filtered_df = pd.concat([before_specified_date, only_sunday_thursday], ignore_index=True)
     
     return filtered_df
+
 
 def gen_crossed_courses_dict_from_prog_dict(program_dict):
     # Create a mapping from each course to all the courses that share a common course
