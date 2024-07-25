@@ -112,15 +112,18 @@ def get_courses_dataframe_from_file(file=None):
         # Get total number os סטודנטים per course, maybe we will use it later
         df['num_of_students'] = df.groupby('course_code')['students'].transform('sum')
         # Keep relevant columns 
-        df = df [['course_code','course_name','num_of_students','semester']].drop_duplicates(subset='course_code').reset_index(drop=True)    
+        df = df [['course_code','num_of_students','semester']].drop_duplicates(subset='course_code').reset_index(drop=True)    
     else:
         # Keep relevant columns         # Drop duplicates by code
-        df = df [['course_code','course_name','semester']].drop_duplicates(subset='course_code').reset_index(drop=True)
+        df = df [['course_code','semester']].drop_duplicates(subset='course_code').reset_index(drop=True)
     
     return df
     
 def merge_ifunim_and_coursim(df_ifunim, df_courses):
-    df = pd.merge(df_ifunim, df_courses, on=['course_code','semester'], how='inner')
+    if len(df_courses) < len(df_ifunim):
+        df = pd.merge(df_courses, df_ifunim, on=['course_code','semester'], how='left')
+    else:
+        df = pd.merge(df_ifunim, df_courses, on=['course_code','semester'], how='left')
     if 'num_of_students' in df.columns:
     # Replace NAN values with zero, and convert to integer
         df['num_of_students'] = df['num_of_students'].fillna(0).astype(int)
