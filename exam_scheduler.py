@@ -1,26 +1,25 @@
 import pandas as pd
-from datetime import timedelta
 import data_processing as dp
 
 
 
 class ExamScheduler:
-    def __init__(self, data_from_files, start_date,
-                 end_moed_alef_date,end_moed_bet_date=None,semester=2,
-                 limitiaons_file=None, start_of_semester2_date=None, moed_c=False,gap=4):
+    def __init__(self, data_from_files, start_date=None,
+                 end_moed_alef_date=None,end_moed_bet_date=None,semester=2,
+                 limitiaons_file=None, start_of_next_semester_date=None, moed_c=False,gap=4):
 
         ## Dates ##
         self.start_date = start_date
         self.end_moed_alef_date = end_moed_alef_date 
         self.end_moed_bet_date = end_moed_bet_date 
-        self.start_of_semester2_date = start_of_semester2_date
+        self.start_of_next_semester_date = start_of_next_semester_date
         self.days_gap_between_moed_b = 28
-        self.semester = semester
+        self.semester = semester            
         self.moed_c = moed_c
         # Data files
         self.data_from_files = data_from_files
-        self.limitiaons_file = limitiaons_file
         
+        self.limitiaons_file = limitiaons_file
         self.courses_dict =  dp.get_courses_dict(data_from_files)
         self.programs_dict = dp.get_programs_dict(data_from_files)
         self.crossed_course_dict = dp.gen_crossed_courses_dict_from_prog_dict(self.programs_dict)
@@ -35,36 +34,42 @@ class ExamScheduler:
         self.moed_a_scheduled = []
         self.moed_b_scheduled = []
         self.gap = gap
+         
+         
+    def _generate_dates_range(self):
+        end_date = self.end_moed_bet_date if self.end_moed_bet_date else self.end_moed_alef_date
+        dates_range = pd.date_range(start=self.start_date, end=end_date)
+        return dates_range
+    
     def create_exam_schedule_table(self):
         """  
         Generate dataframe of possible dates for exams.
         """
         # Convert the date range to a list
-        if self.end_moed_bet_date is not None:
-            dates_range = pd.date_range(start=self.start_date, end=self.end_moed_bet_date)
-        else:
-            dates_range = pd.date_range(start=self.start_date, end=self.end_moed_alef_date)
+        dates_range = self._generate_dates_range()
         # Show it as a DataFrame with column 'date'    
         exam_schedule_table = pd.DataFrame(data=dates_range, columns=['date'])
         # Filter out Shabbat days
-        exam_schedule_table = exam_schedule_table[exam_schedule_table['date'].dt.day_name() != 'Saturday']
-        if self.moed_c:
-            exam_schedule_table = exam_schedule_table[(exam_schedule_table['date'].dt.day_name() == 'Sunday') | (exam_schedule_table['date'].dt.day_name() == 'Thursday')]
+        exam_schedule_table = dp.filter_out_shabbat(exam_schedule_table)
         # Filter out excluded dates
         if self.dates_to_exclude:
             exam_schedule_table = exam_schedule_table[~exam_schedule_table['date'].isin(self.dates_to_exclude)].reset_index(drop=True)
         if self.semester == 1:
-            exam_schedule_table = dp.filter_sunday_thursday(exam_schedule_table, self.start_of_semester2_date)
+            exam_schedule_table = dp.filter_sunday_thursday(exam_schedule_table, self.start_of_next_semester_date)
+        if self.moed_c:
+            exam_schedule_table = exam_schedule_table[(exam_schedule_table['date'].dt.day_name() == 'Sunday') | (exam_schedule_table['date'].dt.day_name() == 'Thursday')]    
+
         # Add column of exam with empty list  
         exam_schedule_table['code'] = [[] for _ in range(len(exam_schedule_table))]
         # Add column of Comments with empty list  
         exam_schedule_table['descriptions'] = [[] for _ in range(len(exam_schedule_table))]
         
+        # dataframe for Moed A until (include) end of moed A
         self.df_first_exam = exam_schedule_table.loc[exam_schedule_table.date<= pd.to_datetime(self.end_moed_alef_date)]
         if self.end_moed_bet_date is not None:
+            # dataframe for Moed B starts day after end of moed A
             self.df_second_exam =exam_schedule_table.loc[exam_schedule_table.date> pd.to_datetime(self.end_moed_alef_date)]
-        # Fix format
-        # exam_schedule_table['date'] = exam_schedule_table['date'].dt.strftime('%Y-%m-%d')
+            
         return exam_schedule_table   
         
     def get_course(self, current_date: str)-> str | None:
@@ -120,7 +125,7 @@ class ExamScheduler:
         attempt = 0
         available_dates = pd.to_datetime(self.exam_schedule_table['date']).values  # Convert available dates to datetime format
         while attempt < max_attempts:
-            potential_date = current_date + pd.DateOffset(days=28+ attempt)   # Calculate 4 weeks (approximately) after current_date
+            potential_date = current_date + pd.DateOffset(days=self.days_gap_between_moed_b+ attempt)   # Calculate 4 weeks (approximately) after current_date
             if potential_date in available_dates:
                 if potential_date <= pd.to_datetime(self.end_moed_bet_date):
                     # print(f"Scheduled Moed B to course {course_to_schedule} on {potential_date} == {28+ attempt}. ")
@@ -148,9 +153,16 @@ class ExamScheduler:
         # if course not in self.moed_a_scheduled:
         index_moed_a = self.get_index_of_date(current_date)
         self.exam_schedule_table.at[index_moed_a, 'code'].append(course)
-        self.exam_schedule_table.at[index_moed_a, 'descriptions'].append(f'{course} מועד א')
+        if self.moed_c:
+            self.exam_schedule_table.at[index_moed_a, 'descriptions'].append(f'{course} מועד ג')
+        else:
+            self.exam_schedule_table.at[index_moed_a, 'descriptions'].append(f'{course} מועד א')
         self.moed_a_scheduled.append(course)
         self.update_blacklist(course, current_date)
+        if self.moed_c:
+            self.courses_to_place.remove(course)
+
+            
                      
     def get_moed_a_date(self, course:int):
         date_moed_a = self.df_first_exam[self.df_first_exam['code'].apply(lambda x: course in x)]['date'].iloc[0]
@@ -209,7 +221,7 @@ class ExamScheduler:
         self.exam_schedule_table = self.exam_schedule_table[['descriptions','code','name','date']]
         
         self.validate_exam_table()
-
+        self.prepare_results_to_export()
 
     def get_index_of_date(self,date):
         index = self.exam_schedule_table.loc[self.exam_schedule_table['date']==date].index.values
@@ -232,3 +244,19 @@ class ExamScheduler:
                         raise ValueError(f'Conflict detected: Crossed course {crossed_course} on {date} conflicts with {curernt_course} on {current_date} gap: {self.gap}')
                 
         print(f'gap of {self.gap} days is OK')
+    
+    def prepare_results_to_export(self):
+        
+        # Change date timestamp to string 
+        self.exam_schedule_table['date'] = self.exam_schedule_table['date'].dt.strftime('%Y-%m-%d')
+        
+        # Dict for Hebrew column
+        result_table_dict = {
+        'descriptions':'הערות',
+        'code': 'קוד קורס',
+        'name': 'שם קורס',
+        'date': 'תאריך',
+                    }        
+
+        # Rename columns to Hebrew
+        self.exam_schedule_table.columns = self.exam_schedule_table.columns.map(result_table_dict)

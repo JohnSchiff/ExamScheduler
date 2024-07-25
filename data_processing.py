@@ -15,7 +15,15 @@ courses_file_dict = {
 'לומדים': 'students',
 'שם': 'course_name',
 'קוד מלא': 'course_code',
+'תקופה': 'semester'
             }
+
+period_dict = {
+    "סמסטר א'": 'א',
+    "סמסטר ב'":'ב',
+    "שנתי" : 'ש',
+    'סמסטר קיץ':'ק'
+} 
 
 def filter_out_based_on_values(df: pd.DataFrame, col: int|str, values: list) -> pd.DataFrame:
     if not isinstance(values, list):
@@ -23,6 +31,8 @@ def filter_out_based_on_values(df: pd.DataFrame, col: int|str, values: list) -> 
     df = df.loc[~ df[col].isin(values)]
     return df
 
+def filter_out_shabbat(df):
+    return df[df['date'].dt.day_name() != 'Saturday']
 
 def handle_course_code_value(df):
     """
@@ -44,7 +54,10 @@ def handle_course_code_value(df):
     return df
 
 # אפיונים
-def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפיינים לקורס.xlsx',semester=2):
+def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפיינים לקורס.xlsx', semester=None):
+    if not file:
+        print('No File input')
+        return
     # Read Excel file headers is the second row (header=1)
     df = pd.read_excel(file, header=1)
 
@@ -56,8 +69,9 @@ def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפי
     # Filter out תרגיל וסמינריון 
     df = filter_out_based_on_values(df, col='teaching',values=['תרגיל','סמינריון'])
 
-    # Drop duplicates by code
-    df = df.drop_duplicates(subset='course_code')
+    # Drop duplicates by code and if same semester, some courses can be in both semsters so we add prtoection
+    df = df.drop_duplicates(subset=['course_code','semester'])
+    
     if semester==2:
         # Filter only Second semester
         df = df.loc[df['semester'] =='ב']
@@ -65,7 +79,7 @@ def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפי
         df = df.loc[df['semester'] =='א']
         
     # Keep only relevant columns
-    df = df[['spec','course_name','course_code']].reset_index(drop=True)
+    df = df[['spec','course_name','course_code','semester']].reset_index(drop=True)
 
     # Make list of instead of big string
     df['spec'] = df['spec'].str.split(',')
@@ -77,7 +91,10 @@ def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפי
 
 # קובץ קורסים
 
-def get_courses_dataframe_from_file(file='כלכלה סמב תשפד.xlsx'):
+def get_courses_dataframe_from_file(file=None):
+    if not file:
+        print('No File input')
+        return
     # Read Excel file, columns in first row (headers=0)
     df = pd.read_excel(file)
 
@@ -89,19 +106,21 @@ def get_courses_dataframe_from_file(file='כלכלה סמב תשפד.xlsx'):
     # Filter out תרגיל וסמינריון 
     df = filter_out_based_on_values(df, col='teaching',values=['תרגיל','סמינריון'])
     
+    df['semester'] = df['semester'].replace(period_dict)
+
     if 'students' in df.columns:
         # Get total number os סטודנטים per course, maybe we will use it later
         df['num_of_students'] = df.groupby('course_code')['students'].transform('sum')
         # Keep relevant columns 
-        df = df [['course_code','num_of_students']].drop_duplicates(subset='course_code').reset_index(drop=True)    
+        df = df [['course_code','course_name','num_of_students','semester']].drop_duplicates(subset='course_code').reset_index(drop=True)    
     else:
         # Keep relevant columns         # Drop duplicates by code
-        df = df [['course_code']].drop_duplicates(subset='course_code').reset_index(drop=True)
+        df = df [['course_code','course_name','semester']].drop_duplicates(subset='course_code').reset_index(drop=True)
     
     return df
     
 def merge_ifunim_and_coursim(df_ifunim, df_courses):
-    df = pd.merge(df_ifunim,df_courses,on='course_code', how='left')
+    df = pd.merge(df_ifunim, df_courses, on=['course_code','semester'], how='inner')
     if 'num_of_students' in df.columns:
     # Replace NAN values with zero, and convert to integer
         df['num_of_students'] = df['num_of_students'].fillna(0).astype(int)
@@ -183,10 +202,10 @@ def get_dict_of_blocked_dates_for_course_from_limitiaons_file(limit_file=None) -
 
 def filter_sunday_thursday(df, specified_date):
     specified_date = pd.to_datetime(specified_date)
-    before_specified_date = df[df['תאריך'] <= specified_date]
+    before_specified_date = df[df['date'] <= specified_date]
     after_specified_date = df[df['date'] > specified_date]
     # Filter the second part to include only Fridays
-    only_sunday_thursday = after_specified_date[(after_specified_date['תאריך'].dt.day_name() == 'Sunday') | (after_specified_date['תאריך'].dt.day_name() == 'Thursday')]    
+    only_sunday_thursday = after_specified_date[(after_specified_date['date'].dt.day_name() == 'Sunday') | (after_specified_date['date'].dt.day_name() == 'Thursday')]    
     # Concatenate the two parts back together
     filtered_df = pd.concat([before_specified_date, only_sunday_thursday], ignore_index=True)
     
@@ -214,3 +233,5 @@ def gen_crossed_courses_dict_from_prog_dict(program_dict):
     course_to_crossed_courses = {course: list(crossed_courses) for course, crossed_courses in course_to_crossed_courses.items()}
     
     return course_to_crossed_courses
+
+
