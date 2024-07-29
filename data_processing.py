@@ -130,7 +130,7 @@ def merge_ifunim_and_coursim(df_ifunim, df_courses):
     return df
 
 
-def get_courses_dict(df, key_str='course_code', path_col='spec'):
+def get_programs_per_course_dict(df, key_str='course_code', path_col='spec'):
     # מילון מפתח קורסים
     courses_dict = {}
     # Iterate all rows 
@@ -142,7 +142,7 @@ def get_courses_dict(df, key_str='course_code', path_col='spec'):
     return courses_dict
 
 
-def get_programs_dict(df):
+def get_courses_per_program_dict(df):
     programs_dict = {}
     # Iterate all rows 
     for index, row in df.iterrows():
@@ -215,18 +215,23 @@ def filter_sunday_thursday(df, specified_date):
     return filtered_df
 
 
-def gen_crossed_courses_dict_from_prog_dict(program_dict):
+def gen_crossed_courses_dict_from_prog_dict(courses_per_program_dict:dict)-> dict:
+    """_summary_
+
+    :param _type_ courses_per_program_dict: _description_
+    :return _type_: _description_
+    """
     # Create a mapping from each course to all the courses that share a common course
     course_to_crossed_courses = {}
 
     # Iterate over each course list
-    for key, course_list in program_dict.items():
-        for course in course_list:
+    for program, courses_list in courses_per_program_dict.items():
+        for course in courses_list:
             if course not in course_to_crossed_courses:
                 course_to_crossed_courses[course] = set()
             
             # Add all other courses in the list to the set of crossed courses
-            course_to_crossed_courses[course].update(course_list)
+            course_to_crossed_courses[course].update(courses_list)
 
     # Remove the course itself from its set of crossed courses
     for course, crossed_courses in course_to_crossed_courses.items():
