@@ -6,7 +6,7 @@ import data_processing as dp
 class ExamScheduler:
     def __init__(self, data_from_files, start_date=None,
                  end_moed_alef_date=None,end_moed_bet_date=None,semester=2,
-                 limitiaons_file=None, start_date_next_semester=None,gap=4):
+                 limitiaons_file=None, start_date_next_semester=None,gap=3):
 
         # Data from files
         self.data_from_files = data_from_files
@@ -16,13 +16,19 @@ class ExamScheduler:
         self.end_moed_bet_date = end_moed_bet_date 
         self.start_date_next_semester = start_date_next_semester
         
+        # Determine which semester
         self.semester = semester    
         
         # External limitioans file
         self.limitiaons_file = limitiaons_file
         
+        # Example  66101: [א' כלכלה ת במנעס ...]
         self.programs_per_course_dict =  dp.get_programs_per_course_dict(data_from_files)
+        
+        # Example א' כלכלה  :     [66101,668767]
         self.courses_per_program_dict = dp.get_courses_per_program_dict(data_from_files)
+        
+        # Example 66101: [66867, 66826, 66827...]
         self.crossed_course_dict = dp.gen_crossed_courses_dict_from_prog_dict(self.courses_per_program_dict)
         
         # Generate dynamic dict
@@ -35,10 +41,17 @@ class ExamScheduler:
         # Gen exam tables
         self.blocked_dates_dict  = dp.get_dict_of_blocked_dates_for_course_from_limitiaons_file(self.limitiaons_file)
         
+        # Get list of unavilable dates to exams based on limitioans file
         self.dates_to_exclude = dp.get_unavailable_dates_from_limit_file(self.limitiaons_file)
+        
+        # Create exam tale with dates 
         self.exam_schedule_table = self.create_exam_schedule_table()
-        self.moed_a_scheduled = []
-        self.moed_b_scheduled = []
+        
+        # list to hold all scheduled to moed alef
+        self.moed_alef_scheduled = []
+        # list to hold all scheduled to moed bet
+        self.moed_bet_scheduled = []
+        # gap between crossed courses
         self.gap = gap
          
          
@@ -154,22 +167,22 @@ class ExamScheduler:
             
         return exam_schedule_table   
         
-    def get_course(self, current_date: str)-> str | None:
-        """
-        Choose a course from the list of courses to place and check if it fits well with the given date.
-        If no course fits, return None.
+    # def get_course(self, current_date: str)-> str | None:
+    #     """
+    #     Choose a course from the list of courses to place and check if it fits well with the given date.
+    #     If no course fits, return None.
 
-        Args:
-            current_date (str): The date to check against the blocked dates for each course.
+    #     Args:
+    #         current_date (str): The date to check against the blocked dates for each course.
 
-        Returns:
-            str or None: The chosen course that fits the date, or None if no suitable course is found.
-        """
-        for course in self.courses_to_place:
-            # Check if the course is not in the blocked dates dictionary or if the current date is not blocked for the course
-            if course not in self.blocked_dates_dict or current_date not in self.blocked_dates_dict[course]:
-                return course
-        return None
+    #     Returns:
+    #         str or None: The chosen course that fits the date, or None if no suitable course is found.
+    #     """
+    #     for course in self.courses_to_place:
+    #         # Check if the course is not in the blocked dates dictionary or if the current date is not blocked for the course
+    #         if course not in self.blocked_dates_dict or current_date not in self.blocked_dates_dict[course]:
+    #             return course
+    #     return None
 
 
 
@@ -223,7 +236,7 @@ class ExamScheduler:
                             # תוסיף הערה בטבלת לוח המבחנים תחת עמודת "descriptions"   
                             self.df_first_exam.at[index, 'descriptions'].append(f'{course} מועד א') 
                             # הוסף קורס לרשימת קורסים ששובצו           
-                            self.moed_a_scheduled.append(course)
+                            self.moed_alef_scheduled.append(course)
                             # מחק קורס מהמילון הדינמי
                             self.remove_course_from_dynamic_dict(course)
                             # תמחק מסלולים ריקים (אם יש)
@@ -236,8 +249,8 @@ class ExamScheduler:
                     break
                 
             iterations +=1
-        if len(self.moed_a_scheduled) < len(self.courses_to_place):
-            not_scheduled_courses = set(self.courses_to_place) - set(self.moed_a_scheduled)
+        if len(self.moed_alef_scheduled) < len(self.courses_to_place):
+            not_scheduled_courses = set(self.courses_to_place) - set(self.moed_alef_scheduled)
             print(f'missing {len(not_scheduled_courses)} courses {list(not_scheduled_courses)}')
             
                      
@@ -258,35 +271,35 @@ class ExamScheduler:
                     self.exam_schedule_table.at[index_moed_b,'descriptions'].append(f'{course}  מועד ב')
                     self.update_blacklist(course, date) 
                     self.courses_to_place.remove(course)
-                    self.moed_b_scheduled.append(course)
+                    self.moed_bet_scheduled.append(course)
                     break     
             
                      
-    def schedule_exams(self ,max_iterations=10,just_moed_a=False):
-        """_summary_
-        This function schedualing the exams based on lazy algorithm
-        :param int max_iterations: _description_, defaults to 2
+    # def schedule_exams(self ,max_iterations=10,just_moed_a=False):
+    #     """_summary_
+    #     This function schedualing the exams based on lazy algorithm
+    #     :param int max_iterations: _description_, defaults to 2
         
-        """
-        iterations = 0
-        while self.courses_to_place and iterations <max_iterations:   
-            print(f' itrartion :{iterations} Lenght coures : {len(self.courses_to_place)}' )
-            # iterate over all possible dates
-            for index ,row in self.df_first_exam.iterrows():
-                if not self.courses_to_place:
-                    break
-                # Get the curernt date 
-                current_date = row['date']
-                # Get  course ,In case no course avaliable, skip to next date
-                course = self.get_course(current_date)
-                if not course:
-                    continue
-                if course not in self.moed_a_scheduled:
-                    self.schedule_moed_a(course, current_date)
-                if course not in self.moed_b_scheduled and not just_moed_a:
-                    self.schedule_moed_b(course,current_date)
+    #     """
+    #     iterations = 0
+    #     while self.courses_to_place and iterations <max_iterations:   
+    #         print(f' itrartion :{iterations} Lenght coures : {len(self.courses_to_place)}' )
+    #         # iterate over all possible dates
+    #         for index ,row in self.df_first_exam.iterrows():
+    #             if not self.courses_to_place:
+    #                 break
+    #             # Get the curernt date 
+    #             current_date = row['date']
+    #             # Get  course ,In case no course avaliable, skip to next date
+    #             course = self.get_course(current_date)
+    #             if not course:
+    #                 continue
+    #             if course not in self.moed_alef_scheduled:
+    #                 self.schedule_moed_a(course, current_date)
+    #             if course not in self.moed_bet_scheduled and not just_moed_a:
+    #                 self.schedule_moed_b(course,current_date)
                         
-            iterations +=1
+    #         iterations +=1
                     
                             
         # print(f'Warning: Maximum iterations reached. {self.courses_to_place} not be scheduled.')

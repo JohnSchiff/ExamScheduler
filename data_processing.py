@@ -54,7 +54,7 @@ def handle_course_code_value(df):
     return df
 
 # אפיונים
-def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפיינים לקורס.xlsx', semester=None):
+def get_ifunim_dataframe_from_file(file='כלכלה תשפד_רשימת מאפיינים לקורס.xlsx', semester=2):
     if not file:
         print('No File input')
         return
