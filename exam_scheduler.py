@@ -167,25 +167,6 @@ class ExamScheduler:
             
         return exam_schedule_table   
         
-    # def get_course(self, current_date: str)-> str | None:
-    #     """
-    #     Choose a course from the list of courses to place and check if it fits well with the given date.
-    #     If no course fits, return None.
-
-    #     Args:
-    #         current_date (str): The date to check against the blocked dates for each course.
-
-    #     Returns:
-    #         str or None: The chosen course that fits the date, or None if no suitable course is found.
-    #     """
-    #     for course in self.courses_to_place:
-    #         # Check if the course is not in the blocked dates dictionary or if the current date is not blocked for the course
-    #         if course not in self.blocked_dates_dict or current_date not in self.blocked_dates_dict[course]:
-    #             return course
-    #     return None
-
-
-
     def update_blacklist(self, course:int, current_date: str, moed_b=False):
         """   
         This function update blacklist  
@@ -214,8 +195,6 @@ class ExamScheduler:
                 self.blocked_dates_dict[crossed_course] = self.blocked_dates_dict[crossed_course].union(limit_days_period)
         return 
 
-        
-    
     
     def schedule_moed_a(self):
         """Schedule Moed A for the course."""
@@ -252,71 +231,15 @@ class ExamScheduler:
         if len(self.moed_alef_scheduled) < len(self.courses_to_place):
             not_scheduled_courses = set(self.courses_to_place) - set(self.moed_alef_scheduled)
             print(f'missing {len(not_scheduled_courses)} courses {list(not_scheduled_courses)}')
-            
-                     
-    def get_moed_a_date(self, course:int):
-        date_moed_a = self.df_first_exam[self.df_first_exam['code'].apply(lambda x: course in x)]['date'].iloc[0]
-        return date_moed_a
-                      
-    def schedule_moed_b(self, course, current_date):
-        """Schedule Moed B for the course."""
-        date_moed_a = self.get_moed_a_date(course)
-        for index, row in self.df_second_exam.iterrows():
-            date = row['date']
-            if (date - date_moed_a).days >=28:
-                if course not in self.blocked_dates_dict or date not in self.blocked_dates_dict[course]:
-                    print(f'Moed B  is {date} course is {course}')
-                    index_moed_b = self.get_index_of_date(date)
-                    self.exam_schedule_table.at[index_moed_b,'code'].append(course)
-                    self.exam_schedule_table.at[index_moed_b,'descriptions'].append(f'{course}  מועד ב')
-                    self.update_blacklist(course, date) 
-                    self.courses_to_place.remove(course)
-                    self.moed_bet_scheduled.append(course)
-                    break     
-            
-                     
-    # def schedule_exams(self ,max_iterations=10,just_moed_a=False):
-    #     """_summary_
-    #     This function schedualing the exams based on lazy algorithm
-    #     :param int max_iterations: _description_, defaults to 2
         
-    #     """
-    #     iterations = 0
-    #     while self.courses_to_place and iterations <max_iterations:   
-    #         print(f' itrartion :{iterations} Lenght coures : {len(self.courses_to_place)}' )
-    #         # iterate over all possible dates
-    #         for index ,row in self.df_first_exam.iterrows():
-    #             if not self.courses_to_place:
-    #                 break
-    #             # Get the curernt date 
-    #             current_date = row['date']
-    #             # Get  course ,In case no course avaliable, skip to next date
-    #             course = self.get_course(current_date)
-    #             if not course:
-    #                 continue
-    #             if course not in self.moed_alef_scheduled:
-    #                 self.schedule_moed_a(course, current_date)
-    #             if course not in self.moed_bet_scheduled and not just_moed_a:
-    #                 self.schedule_moed_b(course,current_date)
-                        
-    #         iterations +=1
-                    
-                            
-        # print(f'Warning: Maximum iterations reached. {self.courses_to_place} not be scheduled.')
-        # Add column of names of courses
-        self.exam_schedule_table['name'] = self.exam_schedule_table['code'].apply(lambda x: [self.code_dict[code] for code in x])
-        self.exam_schedule_table = self.exam_schedule_table[['descriptions','code','name','date']]
         
-        self.validate_exam_table()
-        self.prepare_results_to_export()
-
-    def get_index_of_date(self,date):
-        index = self.exam_schedule_table.loc[self.exam_schedule_table['date']==date].index.values
-        int_index = int(index)
-        return int_index
+        self.validate_exam_table(self.df_first_exam)
+        self.prepare_results_to_export(self.df_first_exam)          
+        self.df_first_exam
+        
     
-    def validate_exam_table(self):
-        for _, row in self.exam_schedule_table.explode('code').iterrows():
+    def validate_exam_table(self, df):
+        for _, row in df.explode('code').iterrows():
             curernt_course = row['code']
             if pd.isna(curernt_course):
                 continue
@@ -324,7 +247,7 @@ class ExamScheduler:
             crossed_courses = self.crossed_course_dict[curernt_course]
             date_range = pd.date_range(start=current_date - pd.Timedelta(days=self.gap), end=current_date + pd.Timedelta(days=self.gap))
             for date in date_range:
-                courses_on_date = self.exam_schedule_table[self.exam_schedule_table['date'] == date]['code'].explode().tolist()
+                courses_on_date = df[df['date'] == date]['code'].explode().tolist()
                 # break
                 for crossed_course in crossed_courses:
                     if crossed_course in courses_on_date:
@@ -332,10 +255,12 @@ class ExamScheduler:
                 
         print(f'gap of {self.gap} days is OK')
     
-    def prepare_results_to_export(self):
-        
+    def prepare_results_to_export(self, df):
+        df = df.copy()
+        df.loc[:,'name'] = df['code'].apply(lambda x: [self.code_dict[code] for code in x])
+        df = df[['descriptions','code','name','date']]
         # Change date timestamp to string 
-        self.exam_schedule_table['date'] = self.exam_schedule_table['date'].dt.strftime('%Y-%m-%d')
+        df['date'] = df['date'].dt.strftime('%Y-%m-%d')
         
         # Dict for Hebrew column
         result_table_dict = {
@@ -346,4 +271,6 @@ class ExamScheduler:
                     }        
 
         # Rename columns to Hebrew
-        self.exam_schedule_table.columns = self.exam_schedule_table.columns.map(result_table_dict)
+        df.columns = df.columns.map(result_table_dict)
+        
+        return df
