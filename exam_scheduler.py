@@ -206,26 +206,28 @@ class ExamScheduler:
                 programs = list(self.dynamic_dict.keys())
                 # עבור כל מסלול במסלולים לפי הסדר
                 for program in programs:
-                    #  רוץ על הקורסים של המסלול (שגם הם מסודרים לפי סדר)
-                    for course in self.dynamic_dict[program]:
-                        # אם הקורס לא מופיע ברשימה השחורה, או מופיע אבל התאריך הנוכחי לא מפריע
-                        if course not in self.blocked_dates_dict or current_date not in self.blocked_dates_dict[course]:
-                            #  שבץ בטבלה של לוח המבחנים בעמודת "code" 
-                            self.df_first_exam.at[index, 'code'].append(course)
-                            # תוסיף הערה בטבלת לוח המבחנים תחת עמודת "descriptions"   
-                            self.df_first_exam.at[index, 'descriptions'].append(f'{course} מועד א') 
-                            # הוסף קורס לרשימת קורסים ששובצו           
-                            self.moed_alef_scheduled.append(course)
-                            # מחק קורס מהמילון הדינמי
-                            self.remove_course_from_dynamic_dict(course)
-                            # תמחק מסלולים ריקים (אם יש)
-                            self.remove_empty_programs_from_dynamic_dict()
-                            # סדר את הרשימה שוב לפי המסלול הכי ארוך ובתוך כל מסלול לפי הקורס עם הכי הרבה קורסים חופפים
-                            self.sort_dynamic_dict()
-                            # עדכן את הרשימה השחורה
-                            self.update_blacklist(course, current_date) 
-                            break
-                    break
+                    # אם המסלול עדיין נמצא במילון הדינמי (עוד לא שובץ כולו)
+                    if program in self.dynamic_dict:
+                        #  רוץ על הקורסים של המסלול (שגם הם מסודרים לפי סדר)
+                        for course in self.dynamic_dict[program]:
+                            # אם הקורס לא מופיע ברשימה השחורה, או מופיע אבל התאריך הנוכחי לא מפריע
+                            if course not in self.blocked_dates_dict or current_date not in self.blocked_dates_dict[course]:
+                                #  שבץ בטבלה של לוח המבחנים בעמודת "code" 
+                                self.df_first_exam.at[index, 'code'].append(course)
+                                # תוסיף הערה בטבלת לוח המבחנים תחת עמודת "descriptions"   
+                                self.df_first_exam.at[index, 'descriptions'].append(f'{course} מועד א') 
+                                # הוסף קורס לרשימת קורסים ששובצו           
+                                self.moed_alef_scheduled.append(course)
+                                # מחק קורס מהמילון הדינמי
+                                self.remove_course_from_dynamic_dict(course)
+                                # תמחק מסלולים ריקים (אם יש)
+                                self.remove_empty_programs_from_dynamic_dict()
+                                # סדר את הרשימה שוב לפי המסלול הכי ארוך ובתוך כל מסלול לפי הקורס עם הכי הרבה קורסים חופפים
+                                self.sort_dynamic_dict()
+                                # עדכן את הרשימה השחורה
+                                self.update_blacklist(course, current_date) 
+                                break
+                    # break
                 
             iterations +=1
         if len(self.moed_alef_scheduled) < len(self.courses_to_place):
