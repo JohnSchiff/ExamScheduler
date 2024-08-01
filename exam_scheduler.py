@@ -180,12 +180,19 @@ class ExamScheduler:
         for crossed_course in crossed_courses:
             # Check if it's not already in blacklist
             current_date = pd.to_datetime(current_date)
-            # Add expiration date of 4 days
-            limit_days_period = pd.date_range(start=current_date - pd.Timedelta(days=self.gap), end=current_date + pd.Timedelta(days=self.gap))
+            first_day_before = current_date - pd.Timedelta(days=self.gap)
+            if first_day_before < pd.to_datetime(self.start_date):
+                first_day_before = self.start_date
+            final_days_after = current_date + pd.Timedelta(days=self.gap)
+            # Set maximum by 
+            end_date = pd.to_datetime(self.end_moed_bet_date) if self.end_moed_bet_date else pd.to_datetime(self.end_moed_alef_date)
+            if final_days_after > end_date:
+                final_days_after = end_date
+            # Add expiration date of gap days
+            limit_days_period = pd.date_range(start=first_day_before, end=final_days_after)
             if moed_b:
                 if course in self.blocked_dates_dict:
                     del self.blocked_dates_dict[course]
-                    print(f'remove {course} from blacklist')
                 limit_days_before= pd.date_range(start=current_date - pd.Timedelta(days=self.gap), end=current_date + pd.Timedelta(days=self.gap))
                 # limit_days_before = pd.date_range(end=current_date, periods=4)
                 limit_days_period = limit_days_period.union(limit_days_before)
