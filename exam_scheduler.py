@@ -172,34 +172,19 @@ class ExamScheduler:
         This function update blacklist  
         """
         # Remove scheuled course from blacklist 
-        crossed_courses = self.crossed_course_dict[course]
-        # When there was no new crossed courses to add to blacklist
-        if not crossed_courses:
+        if course in self.blocked_dates_dict:
+            del self.blocked_dates_dict[course]
+        crossed_courses_dict = dp.gen_crossed_courses_dict_from_prog_dict(self.dynamic_dict)
+        courses_in_conflict = crossed_courses_dict[course]
+        if not courses_in_conflict:
             return
+        limit_days_period = self.get_blocked_days_from_conflicted_course(current_date)
         # Iterate over the crossed courses
-        for crossed_course in crossed_courses:
-            # Check if it's not already in blacklist
-            current_date = pd.to_datetime(current_date)
-            first_day_before = current_date - pd.Timedelta(days=self.gap)
-            if first_day_before < pd.to_datetime(self.start_date):
-                first_day_before = self.start_date
-            final_days_after = current_date + pd.Timedelta(days=self.gap)
-            # Set maximum by 
-            end_date = pd.to_datetime(self.end_moed_bet_date) if self.end_moed_bet_date else pd.to_datetime(self.end_moed_alef_date)
-            if final_days_after > end_date:
-                final_days_after = end_date
-            # Add expiration date of gap days
-            limit_days_period = pd.date_range(start=first_day_before, end=final_days_after)
-            if moed_b:
-                if course in self.blocked_dates_dict:
-                    del self.blocked_dates_dict[course]
-                limit_days_before= pd.date_range(start=current_date - pd.Timedelta(days=self.gap), end=current_date + pd.Timedelta(days=self.gap))
-                # limit_days_before = pd.date_range(end=current_date, periods=4)
-                limit_days_period = limit_days_period.union(limit_days_before)
-            if crossed_course not in self.blocked_dates_dict:
-                self.blocked_dates_dict[crossed_course] = limit_days_period
+        for conflict_course in courses_in_conflict:
+            if conflict_course not in self.blocked_dates_dict:
+                self.blocked_dates_dict[conflict_course] = limit_days_period
             else:
-                self.blocked_dates_dict[crossed_course] = self.blocked_dates_dict[crossed_course].union(limit_days_period)
+                self.blocked_dates_dict[conflict_course] = self.blocked_dates_dict[conflict_course].union(limit_days_period)
         return 
 
     
@@ -219,6 +204,8 @@ class ExamScheduler:
                         for course in self.dynamic_dict[program]:
                             # אם הקורס לא מופיע ברשימה השחורה, או מופיע אבל התאריך הנוכחי לא מפריע
                             if course not in self.blocked_dates_dict or current_date not in self.blocked_dates_dict[course]:
+                                # עדכן את הרשימה השחורה
+                                self.update_blacklist(course, current_date) 
                                 #  שבץ בטבלה של לוח המבחנים בעמודת "code" 
                                 self.df_first_exam.at[index, 'code'].append(course)
                                 # תוסיף הערה בטבלת לוח המבחנים תחת עמודת "descriptions"   
@@ -231,8 +218,6 @@ class ExamScheduler:
                                 self.remove_empty_programs_from_dynamic_dict()
                                 # סדר את הרשימה שוב לפי המסלול הכי ארוך ובתוך כל מסלול לפי הקורס עם הכי הרבה קורסים חופפים
                                 self.sort_dynamic_dict()
-                                # עדכן את הרשימה השחורה
-                                self.update_blacklist(course, current_date) 
                                 break
                     # break
                 
@@ -283,3 +268,16 @@ class ExamScheduler:
         df.columns = df.columns.map(result_table_dict)
         
         return df
+    
+    def get_blocked_days_from_conflicted_course(self, current_date):
+        start_blocked_date = current_date - pd.Timedelta(days=self.gap)
+        if start_blocked_date < pd.to_datetime(self.start_date):
+            start_blocked_date = self.start_date
+        end_blocked_date = current_date + pd.Timedelta(days=self.gap)
+        # Set maximum by 
+        end_date = pd.to_datetime(self.end_moed_bet_date) if self.end_moed_bet_date else pd.to_datetime(self.end_moed_alef_date)
+        if end_blocked_date > end_date:
+            end_blocked_date = end_date
+        # Add expiration date of gap days
+        limit_days_period = pd.date_range(start=start_blocked_date, end=end_blocked_date)
+        return limit_days_period
