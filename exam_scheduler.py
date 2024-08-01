@@ -206,27 +206,15 @@ class ExamScheduler:
                             if course not in self.blocked_dates_dict or current_date not in self.blocked_dates_dict[course]:
                                 # עדכן את הרשימה השחורה
                                 self.update_blacklist(course, current_date) 
-                                #  שבץ בטבלה של לוח המבחנים בעמודת "code" 
-                                self.df_first_exam.at[index, 'code'].append(course)
-                                # תוסיף הערה בטבלת לוח המבחנים תחת עמודת "descriptions"   
-                                self.df_first_exam.at[index, 'descriptions'].append(f'{course} מועד א') 
-                                # הוסף קורס לרשימת קורסים ששובצו           
-                                self.moed_alef_scheduled.append(course)
-                                # מחק קורס מהמילון הדינמי
-                                self.remove_course_from_dynamic_dict(course)
-                                # תמחק מסלולים ריקים (אם יש)
-                                self.remove_empty_programs_from_dynamic_dict()
+                                # שבץ בלוח
+                                self.update_exam_table(self.df_first_exam, index, course)
+                                # עדכן את המילון הדינמי
+                                self.update_dynamic_dict(course)
                                 # סדר את הרשימה שוב לפי המסלול הכי ארוך ובתוך כל מסלול לפי הקורס עם הכי הרבה קורסים חופפים
                                 self.sort_dynamic_dict()
                                 break
-                    # break
-                
             iterations +=1
-        if len(self.moed_alef_scheduled) < len(self.courses_to_place):
-            not_scheduled_courses = set(self.courses_to_place) - set(self.moed_alef_scheduled)
-            print(f'missing {len(not_scheduled_courses)} courses {list(not_scheduled_courses)}')
-        
-        
+        self.check_for_missing_courses()
         self.validate_exam_table(self.df_first_exam)
         self.prepare_results_to_export(self.df_first_exam)          
         self.df_first_exam
@@ -281,3 +269,26 @@ class ExamScheduler:
         # Add expiration date of gap days
         limit_days_period = pd.date_range(start=start_blocked_date, end=end_blocked_date)
         return limit_days_period
+    
+    def update_dynamic_dict(self, course):
+        # מחק קורס מהמילון הדינמי
+        self.remove_course_from_dynamic_dict(course)
+        # תמחק מסלולים ריקים (אם יש)
+        self.remove_empty_programs_from_dynamic_dict()
+    
+    def update_exam_table(self,df, index, course):
+        #  שבץ בטבלה של לוח המבחנים בעמודת "code" 
+        df.at[index, 'code'].append(course)
+        # תוסיף הערה בטבלת לוח המבחנים תחת עמודת "descriptions"   
+        df.at[index, 'descriptions'].append(f'{course} מועד א') 
+        # הוסף קורס לרשימת קורסים ששובצו           
+        self.moed_alef_scheduled.append(course)
+    
+    def check_for_missing_courses(self):
+        not_scheduled_courses = set(self.courses_to_place) - set(self.moed_alef_scheduled)
+        
+        if not_scheduled_courses:
+            msg = f'Missing {len(not_scheduled_courses)} courses - {list(not_scheduled_courses)}'
+        else:
+            msg = 'All Courses have been scheduled'
+        print(msg)
