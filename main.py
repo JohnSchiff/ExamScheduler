@@ -18,16 +18,17 @@ start_semester2_moed2='2025-08-10'
 end_semester2_moed2='2025-09-04'
 second_semester_Start_Date='2025-03-16'
 ############################# IMPORTANT
-semester=2
-moed=2
+semester=1
+moed=1
 logger.add_remark("Semester:"+str(semester)+", Moed:"+str(moed))
-######################################
+######################################                             
 gap=3
 ############################ Files
-charecteristics='C:/Users/user/Dropbox/mainProjects/code/Tests_Project/ExamScheduler-master/ExamScheduler-master/characteristics.xlsx'
-limitationsFile='C:/Users/user/Dropbox/mainProjects/code/Tests_Project/ExamScheduler-master/ExamScheduler-master/קובץ אילוצים.xlsx'
-semester1moed1tableFile='C:/Users/user/Dropbox/mainProjects/code/Tests_Project/ExamScheduler-master/ExamScheduler-master/exam_schedule_semester1_moed1.xlsx'
-semester2moed1tableFile='C:/Users/user/Dropbox/mainProjects/code/Tests_Project/ExamScheduler-master/ExamScheduler-master/exam_schedule_semester2_moed1.xlsx'
+charecteristics='characteristics.xlsx'
+limitationsFile='קובץ אילוצים.xlsx'
+coursesFile = 'קובץ קורסים.xlsx'
+semester1moed1tableFile='exam_schedule_semester1_moed1.xlsx'
+semester2moed1tableFile='exam_schedule_semester2_moed1.xlsx'
 ###########################################################################
 ### Initialazing Data
 moed1F=None
@@ -55,8 +56,9 @@ if semester==2 and moed==2:
 
 # reading Data
 df_ifunim = dp.get_ifunim_dataframe_from_file(charecteristics,semester)
+df_courses = dp.get_courses_dataframe_from_file(coursesFile)
 limitations=dp.get_limitations(limitationsFile,moed1F)
-exam_scheduler = ExamScheduler(df_ifunim, limitations, start_date, end_date,gap,secondStart)
+exam_scheduler = ExamScheduler(df_ifunim, df_courses, limitations, start_date, end_date,gap,secondStart)
 exam_scheduler.schedule()
 exams_per_programs=exam_scheduler.arrangePrograms()
 

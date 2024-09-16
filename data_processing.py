@@ -1,7 +1,6 @@
 import pandas as pd
 from Logger import logger
-from itertools import zip_longest
-from itertools import combinations
+from itertools import combinations, chain
 import ast
 from datetime import timedelta
 from openpyxl import load_workbook
@@ -93,7 +92,10 @@ def handle_course_code_value(df):
     df[kod] = df[kod].astype('Int32')
     return df
 
-
+def get_all_courses_from_dict(courses_per_program_dict):
+    all_courses = set(chain.from_iterable(courses_per_program_dict.values()))
+    return all_courses
+    
 def allSpec(specsCol):
     all_elements = [item for sublist in specsCol for item in sublist]
     unique_elements = list(set(all_elements))
@@ -189,7 +191,7 @@ def parse_limit_files(limit_file):
     'התחלה': 'start',
     'שם קורס': 'course_name',
     'קוד קורס': 'course',
-    'רווח': 'gap',
+    'ללא שישי': 'no_friday',
     'חסום': 'blocked'
                 }
     df = pd.read_excel(limit_file, header=0)
@@ -199,6 +201,7 @@ def parse_limit_files(limit_file):
     df['start'] = pd.to_datetime(df['start'],dayfirst=True)
     df = df.dropna(subset=['course'])
     return df
+
 def parseMoedA(df,moedAfile):
     dfMoedA=pd.read_excel(moedAfile, header=0)
     dfMoedA['date'] = pd.to_datetime(dfMoedA['date'])

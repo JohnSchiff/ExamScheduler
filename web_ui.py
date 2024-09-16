@@ -53,7 +53,7 @@ class ExamSchedulerApp:
     
     def setup_ui(self):
         
-        st.image('BIU_LOGO.jpg')
+        st.image('BIU_LOGO.png')
         # Custom CSS for the file uploader labels
         st.markdown(
             """
@@ -87,11 +87,12 @@ class ExamSchedulerApp:
         self.uploaded_limits_file = st.file_uploader("(אופציונלי)", type=["csv", "xlsx"], key="uploader3", )
 
         # Layout with number input for days gap between exams
-        col1, col2, col3,col4 = st.columns([0.1] * 4)  # size of columns
+        col1, col2,col3, col4= st.columns([0.1] * 4)  # size of columns
         # self.days_gap_between_exams = col3.number_input(
         #     "פער בין מבחנים (ימים)", min_value=1, max_value=5, value=4, step=1, key="dte_min_input")
 
-        self.days_gap_between_exams = col4.date_input("בחירת סמסטר",value='today', min_value=date(2024,8,19), max_value=date(2025,12,31))
+        self.moed = col2.radio('מועד',['א','ב'])
+        self.semester = col3.radio('סמסטר',[1,2])
         # Button to generate exam schedule
         col1, col2, col3 = st.columns([0.2] * 3)  # size of columns
         self.gen_exams_button = col2.button(label='צור לוח מבחנים', disabled=False, on_click=self.create_exam_schedule)
@@ -104,9 +105,9 @@ class ExamSchedulerApp:
         return not self.uploaded_courses_file or not self.uploaded_ifunim_file
 
     def create_exam_schedule(self):
+        print(f'self.moed : {self.moed} self.semester : {self.semester} ')
         if not self.uploaded_courses_file or not self.uploaded_ifunim_file:
             st.error('This is a not working ')
-
             return
         df_ifunim = dp.get_ifunim_dataframe_from_file(self.uploaded_ifunim_file, semester=2)
         df_courses = dp.get_courses_dataframe_from_file(self.uploaded_courses_file)
