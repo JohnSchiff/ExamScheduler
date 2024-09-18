@@ -86,13 +86,16 @@ class ExamSchedulerApp:
         st.markdown('<label class="file-upload-label">קובץ אילוצים</label>', unsafe_allow_html=True)
         self.uploaded_limits_file = st.file_uploader("(אופציונלי)", type=["csv", "xlsx"], key="uploader3", )
 
+        
         # Layout with number input for days gap between exams
         col1, col2,col3, col4= st.columns([0.1] * 4)  # size of columns
         # self.days_gap_between_exams = col3.number_input(
         #     "פער בין מבחנים (ימים)", min_value=1, max_value=5, value=4, step=1, key="dte_min_input")
-
-        self.moed = col2.radio('מועד',['א','ב'])
-        self.semester = col3.radio('סמסטר',[1,2])
+        
+        self.start_date = col3.date_input(label='start_date')
+        self.end_date = col4.date_input(label='end_date')
+        self.moed = col1.radio('מועד',['א','ב'])
+        self.semester = col2.radio('סמסטר',[1,2])
         # Button to generate exam schedule
         col1, col2, col3 = st.columns([0.2] * 3)  # size of columns
         self.gen_exams_button = col2.button(label='צור לוח מבחנים', disabled=False, on_click=self.create_exam_schedule)
@@ -109,15 +112,14 @@ class ExamSchedulerApp:
         if not self.uploaded_courses_file or not self.uploaded_ifunim_file:
             st.error('This is a not working ')
             return
-        df_ifunim = dp.get_ifunim_dataframe_from_file(self.uploaded_ifunim_file, semester=2)
+        df_ifunim = dp.get_ifunim_dataframe_from_file(self.uploaded_ifunim_file, semester=1)
         df_courses = dp.get_courses_dataframe_from_file(self.uploaded_courses_file)
-        limitations_file = self.uploaded_limits_file
-        df = dp.merge_ifunim_and_coursim(df_ifunim, df_courses)
-        exam_scheduler = ExamScheduler(df, external_file=limitations_file, gap=self.days_gap_between_exams)
-        exam_scheduler.schedule_exams()
+        limitations_file = dp.get_limitations(self.uploaded_limits_file)
+        exam_scheduler = ExamScheduler(df_ifunim, df_courses, limitations_file, start_date=str(self.start_date), end_date=str(self.end_date))
+        exam_scheduler.schedule()
 
         # Display DataFrame 
-        self.df_place.dataframe(exam_scheduler.exam_schedule, height=1500, width=2000)
+        self.df_place.dataframe(exam_scheduler.exam_schedule_table, height=1500, width=2000)
 # Run the app
 if __name__ == "__main__":
     app = ExamSchedulerApp()

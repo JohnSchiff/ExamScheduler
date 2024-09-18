@@ -7,7 +7,7 @@ from datetime import timedelta
 
 
 class ExamScheduler:
-    def __init__(self, df_ifunim, df_courses, limitations, start_date, end_date, gap, start_secondS):
+    def __init__(self, df_ifunim, df_courses, limitations, start_date, end_date, gap=3, start_secondS=None):
         self.df_ifunim = df_ifunim
         self.df_courses = df_courses
         self.students_per_course_dict = dict(zip(df_courses['course_code'], df_courses['num_of_students']))
