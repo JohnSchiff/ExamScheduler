@@ -33,6 +33,7 @@ semester2moed1tableFile='exam_schedule_semester2_moed1.xlsx'
 ### Initialazing Data
 moed1F=None
 secondStart=None
+
 if semester==1 and moed==1: 
     start_date = start_semester1_moed1
     end_date = end_semester1_moed1

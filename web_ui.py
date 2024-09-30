@@ -1,58 +1,44 @@
 import streamlit as st
+import streamlit_authenticator as stauth
 from datetime import date
 import pandas as pd
 from exam_scheduler import ExamScheduler
 import data_processing as dp
-import hashlib
+import yaml
+from yaml.loader import SafeLoader
 
 
-#TODO Check smeester a courses 
 class ExamSchedulerApp:
     def __init__(self):
         self.uploaded_courses_file = None
         self.uploaded_ifunim_file = None
         self.uploaded_limits_file = None
+        st.set_page_config(page_title="שיבוץ בחינות", page_icon=":calendar:")
+        self.show_login()
 
-        # Initialize session state for authentication
-        if 'logged_in' not in st.session_state:
-            st.session_state.logged_in = False
-        
-        if not st.session_state.logged_in:
-            self.show_login()
-        else:
-            st.set_page_config(page_title="שיבוץ בחינות", page_icon=":calendar:")
-            self.setup_ui()
     def show_login(self):
-        st.title("Login Page")
+        with open('config.yaml') as file:
+            config = yaml.load(file, Loader=SafeLoader)
 
-        # Load secrets
-        user_data = st.secrets["users"]
-
-        # User input fields
-        username = st.text_input("Username")
-        password = st.text_input("Password", type='password')
-
-        # Login button
-        if st.button("Login"):
-            if self.check_credentials(username, password, user_data):
-                st.session_state.logged_in = True
-                st.rerun()  # Reload the app to show the main content
-            else:
-                st.error("Invalid username or password")
-
-    def check_credentials(self, username, password, user_data):
-        # Hash the password for comparison
-        def hash_password(password):
-            return hashlib.sha256(password.encode()).hexdigest()
-
-        hashed_password = hash_password(password)
-        for user in user_data:
-            if user["username"] == username and hash_password(user["password"]) == hashed_password:
-                return True
-        return False
+        authenticator = stauth.Authenticate(
+            config['credentials'],
+            config['cookie']['name'],
+            config['cookie']['key'],
+            config['cookie']['expiry_days'],
+        )
     
+        authenticator.login()
+        if st.session_state['authentication_status']:
+            authenticator.logout("Logout", "sidebar")
+            st.sidebar.write(f'Welcome *{st.session_state["name"]}*')
+            self.setup_ui()
+        elif st.session_state['authentication_status'] is False:
+            st.error('Username/password is incorrect')
+        elif st.session_state['authentication_status'] is None:
+            st.warning('Please enter your username and password')
+
     def setup_ui(self):
-        
+
         st.image('BIU_LOGO.png')
         # Custom CSS for the file uploader labels
         st.markdown(
@@ -78,30 +64,58 @@ class ExamSchedulerApp:
             """,
             unsafe_allow_html=True
         )
-        st.markdown('<label class="file-upload-label">קובץ קורסים של המחלקה<span class="required">*</span></label>', unsafe_allow_html=True)
-        # Layout with file uploaders
-        self.uploaded_courses_file = st.file_uploader("קורסים", type=["csv", "xlsx"], key="uploader1", label_visibility='hidden')
-        st.markdown('<label class="file-upload-label">קובץ אפיונים<span class="required">*</span></label>', unsafe_allow_html=True)
-        self.uploaded_ifunim_file = st.file_uploader("אפיונים", type=["csv", "xlsx"], key="uploader2", label_visibility='hidden')
-        st.markdown('<label class="file-upload-label">קובץ אילוצים</label>', unsafe_allow_html=True)
-        self.uploaded_limits_file = st.file_uploader("(אופציונלי)", type=["csv", "xlsx"], key="uploader3", )
-
         
+        col1, col2 = st.columns([4, 2])
+        self.uploaded_courses_file = col1.file_uploader(
+            "קורסים", type=["csv", "xlsx"], key="uploader1", label_visibility='hidden')
+        col2.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)  # Adjust height as needed
+
+        col2.markdown(
+            '<label class="file-upload-label">קובץ קורסים<span class="required">*</span></label>', unsafe_allow_html=True)
+        col1, col2 = st.columns([4, 2])
+        self.uploaded_ifunim_file = col1.file_uploader(
+            "אפיונים", type=["csv", "xlsx"], key="uploader2", label_visibility='hidden')
+        # Layout with file uploaders
+        col2.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)  # Adjust height as needed
+        col2.markdown('<label class="file-upload-label">קובץ אפיונים<span class="required">*</span></label>',
+                      unsafe_allow_html=True)
+
+        col1, col2 = st.columns([4, 2])
+        self.uploaded_limits_file = col1.file_uploader(
+            "אילוצים", type=["csv", "xlsx"], key="uploader3", label_visibility='hidden')
+        col2.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)  # Adjust height as needed
+        col2.markdown('<label class="file-upload-label">קובץ אילוצים  </label>', unsafe_allow_html=True)
+
+        st.divider()
         # Layout with number input for days gap between exams
-        col1, col2,col3, col4= st.columns([0.1] * 4)  # size of columns
+        col1, col2, col3, col4 = st.columns([0.1]*4)  # size of columns
         # self.days_gap_between_exams = col3.number_input(
         #     "פער בין מבחנים (ימים)", min_value=1, max_value=5, value=4, step=1, key="dte_min_input")
+
+        self.start_date = col2.date_input(label='תאריך התחלה')
+        self.end_date = col1.date_input(label='תאריך סוף')
+        # Checking if the end date is before the start date
+        if self.end_date < self.start_date:
+            st.error("!תאריך הסוף לא יכול להיות מוקדם מתאריך ההתחלה")
         
-        self.start_date = col3.date_input(label='start_date')
-        self.end_date = col4.date_input(label='end_date')
-        self.moed = col1.radio('מועד',['א','ב'])
-        self.semester = col2.radio('סמסטר',[1,2])
+        self.moed_radio_button = col3.radio('מועד', ['א', 'ב'], key='moed')
+        self.semester = col4.radio('סמסטר', [1, 2], key='semester')
+
+        if st.session_state.moed == 'ב':
+            st.markdown('<label class="file-upload-label">מועד א\'</label>', unsafe_allow_html=True)
+            self.uploaded_additional_file = st.file_uploader(
+                "Additional File for Semester B", type=["csv", "xlsx"], key="uploader_additional")
         # Button to generate exam schedule
+        st.divider()
         col1, col2, col3 = st.columns([0.2] * 3)  # size of columns
         self.gen_exams_button = col2.button(label='צור לוח מבחנים', disabled=False, on_click=self.create_exam_schedule)
 
-
         self.df_place = st.columns([1])[0]
+
+            
+
+    def on_option_change(self, key):
+        print(f"Selected option: {st.session_state[key]}")
 
     def should_disable_button(self):
         # Check if any of the required files are not uploaded
@@ -110,18 +124,19 @@ class ExamSchedulerApp:
     def create_exam_schedule(self):
         print(f'self.moed : {self.moed} self.semester : {self.semester} ')
         if not self.uploaded_courses_file or not self.uploaded_ifunim_file:
-            st.error('This is a not working ')
+            st.toast(f"חסרים קבצים", icon="⚠️")
             return
-        df_ifunim = dp.get_ifunim_dataframe_from_file(self.uploaded_ifunim_file, semester=1)
+        df_ifunim = dp.get_ifunim_dataframe_from_file(self.uploaded_ifunim_file, semester=self.semester)
         df_courses = dp.get_courses_dataframe_from_file(self.uploaded_courses_file)
         limitations_file = dp.get_limitations(self.uploaded_limits_file)
-        exam_scheduler = ExamScheduler(df_ifunim, df_courses, limitations_file, start_date=str(self.start_date), end_date=str(self.end_date))
+        exam_scheduler = ExamScheduler(df_ifunim, df_courses, limitations_file,
+                                       start_date=str(self.start_date), end_date=str(self.end_date))
         exam_scheduler.schedule()
 
-        # Display DataFrame 
+        # Display DataFrame
         self.df_place.dataframe(exam_scheduler.exam_schedule_table, height=1500, width=2000)
+
+
 # Run the app
 if __name__ == "__main__":
     app = ExamSchedulerApp()
-
-
