@@ -1,0 +1,17 @@
+credentials:
+  usernames:
+    amnonschr:
+      email: amnonschr@gmail.com
+      name: Amnon Schreiber
+      password: $2b$12$AMjsbvSJPbTM1nn6BBC0EeFEgR1nAYcf6ZSyn6DaIns2JWse/ruXK
+    yschiff:
+      email: john5754@gmail.com
+      name: John Schiff
+      password: $2b$12$UHHZexSmScBqLQ2o2skhMeWzZhPwRo3xSTG/lrsAj.Byoe/U9J9Pu 
+cookie:
+  expiry_days: 0
+  key: random_signature_key # Must be string
+  name: random_cookie_name
+preauthorized:
+  emails:
+  - melsby@gmail.com
