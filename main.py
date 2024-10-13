@@ -1,7 +1,6 @@
 import sys
 import time
 start_time = time.time()
-from Logger import logger
 from exam_scheduler import ExamScheduler
 import pandas as pd
 import data_processing as dp
@@ -20,7 +19,6 @@ second_semester_Start_Date='2025-03-16'
 ############################# IMPORTANT
 semester=1
 moed=1
-logger.add_remark("Semester:"+str(semester)+", Moed:"+str(moed))
 ######################################                             
 gap=3
 ############################ Files
@@ -72,7 +70,6 @@ dp.saveDfToExcelFile(exams_per_programs,'TablePerPrograms'+sm+'.xlsx')
 
 
 end_time=time.time()
-logger.add_remark("Running time:"+str(start_time-end_time))
-logger.print_log()
+
 
 

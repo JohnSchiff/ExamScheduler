@@ -1,7 +1,6 @@
 import pandas as pd
 import data_processing as dp
 import math
-from Logger import logger
 from itertools import chain
 from datetime import timedelta
 
@@ -126,7 +125,6 @@ class ExamScheduler:
             if program in self.dynamic_dict and len(self.dynamic_dict[program]) > 0:
                 msg = f'Scheduling {program} is impossible.\n It contains {len(self.courses_per_program_dict[program])} courses,available dates:{len(self.exam_schedule_table)}'
                 print(msg)
-                logger.add_remark(msg)
 
         if len(self.scheduled_courses) < len(self.courses_to_place):
             not_scheduled_courses = set(self.courses_to_place) - set(self.scheduled_courses)

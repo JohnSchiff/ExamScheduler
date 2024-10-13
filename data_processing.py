@@ -45,7 +45,6 @@ def get_ifunim_dataframe_from_file(file, semester):
         df = df.loc[df['semester'] =='ב']
     elif semester ==1:
         df = df.loc[df['semester'] =='א']
-    logger.add_remark("Semester "+str(semester))  
     # Keep only relevant columns
     df = df[['spec','course_name','course_code','semester']].reset_index(drop=True)
     # Make list of specs instead of big string
@@ -53,8 +52,6 @@ def get_ifunim_dataframe_from_file(file, semester):
 
     # a list of all specs. In the example file there are 36 specs. 
     specs=allSpec(df['spec'])
-    logger.add_remark("Number of specifications "+str(len(specs)))
-    logger.add_remark("All spec: "+str(specs))
 
     # Convert to integer from float
     df['course_code'] = df['course_code'].astype(int)
