@@ -16,7 +16,7 @@ ifunim_dict = {
 
 courses_file_dict = {
 'סוג מפגש':'teaching',
-'לומדים': 'students',
+'רשומים': 'students',
 'שם': 'course_name',
 'קוד מלא': 'course_code',
 'תקופה': 'semester'
@@ -191,6 +191,8 @@ def parse_limit_files(limit_file):
     'חסום': 'blocked'
                 }
     df = pd.read_excel(limit_file, header=0)
+    if 'ללא שישי' not in df.columns:
+        df['ללא שישי'] = ''
     df.columns = [col.strip() for col in df.columns]
     df.columns = df.columns.map(limit_file_cols_dict)
     df['end'] = pd.to_datetime(df['end'],dayfirst=True)

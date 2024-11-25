@@ -122,7 +122,7 @@ class ExamSchedulerApp:
         return not self.uploaded_courses_file or not self.uploaded_ifunim_file
 
     def create_exam_schedule(self):
-        print(f'self.moed : {self.moed} self.semester : {self.semester} ')
+        print(f'self.moed : {self.moed_radio_button} self.semester : {self.semester} ')
         if not self.uploaded_courses_file or not self.uploaded_ifunim_file:
             st.toast(f"חסרים קבצים", icon="⚠️")
             return
