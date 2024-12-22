@@ -13,7 +13,7 @@ class ExamScheduler:
         self.df = dp.merge_ifunim_and_coursim(self.df_ifunim, self.df_courses)
 
         self.limitations = limitations
-        self.no_friday_courses = self.limitations[self.limitations['no_friday']==1]['course'].values
+        self.no_friday_courses = self.limitations[self.limitations['no_friday'] == 1]['course'].values
         ## Dates ##
         self.start_date = start_date
         self.end_date = end_date
@@ -142,7 +142,7 @@ class ExamScheduler:
         self.exam_schedule_table.at[index, 'code'].append(course)
         num_of_students_in_course = self.students_per_course_dict.get(course, 0)
         # תוסיף הערה בטבלת לוח המבחנים תחת עמודת "descriptions"
-        self.exam_schedule_table.at[index, 'descriptions'].append(f'{course} - {num_of_students_in_course}')
+        self.exam_schedule_table.at[index, 'descriptions'].append(f'{course} - {self.code_dict[course]}')
         # הוסף קורס לרשימת קורסים ששובצו
         self.scheduled_courses.append(course)
         # מחק קורס מהמילון הדינמי
@@ -157,7 +157,7 @@ class ExamScheduler:
         self.maxAday = math.floor(len(self.scheduled_courses)/self.Ndates)+2
 
     def is_course_out_of_limit_file(self, current_date, course):
-        if course in self.no_friday_courses and current_date.weekday()==4:
+        if course in self.no_friday_courses and current_date.weekday() == 4:
             return False
         if course not in self.limitations['course'].values:
             return True
@@ -210,9 +210,9 @@ class ExamScheduler:
         :return _type_: _description_
         """
         for program in self.courses_per_program_dict:
-            courses_sorted_by_stuendts = sorted(self.courses_per_program_dict[program], key=lambda x: self.students_per_course_dict.get(x, 0), reverse=True)
+            courses_sorted_by_stuendts = sorted(
+                self.courses_per_program_dict[program], key=lambda x: self.students_per_course_dict.get(x, 0), reverse=True)
             self.courses_per_program_dict[program] = courses_sorted_by_stuendts
-
 
     def sort_courses_inside_program(self):
         """
@@ -301,13 +301,13 @@ class ExamScheduler:
             current_date_pd = pd.to_datetime(current_date)
 
             limit_days_period_one_day = pd.date_range(start=current_date_pd-pd.Timedelta(days=1),
-                                                      end = current_date + pd.Timedelta(days=1))
+                                                      end=current_date + pd.Timedelta(days=1))
 
             limit_days_period_two_days = pd.date_range(start=current_date_pd-pd.Timedelta(days=2),
-                                                       end = current_date + pd.Timedelta(days=2))
+                                                       end=current_date + pd.Timedelta(days=2))
 
             limit_days_period_three_days = pd.date_range(start=current_date_pd-pd.Timedelta(days=3),
-                                                         end = current_date + pd.Timedelta(days=3))
+                                                         end=current_date + pd.Timedelta(days=3))
             self.restrictions_one_day[crossed_course].update(limit_days_period_one_day)
             self.restrictions_two_days[crossed_course].update(limit_days_period_two_days)
             self.restrictions_three_days[crossed_course].update(limit_days_period_three_days)
