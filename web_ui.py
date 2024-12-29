@@ -26,7 +26,7 @@ class ExamSchedulerApp:
             config['cookie']['key'],
             config['cookie']['expiry_days'],
         )
-    
+
         authenticator.login()
         if st.session_state['authentication_status']:
             authenticator.logout("Logout", "sidebar")
@@ -64,7 +64,7 @@ class ExamSchedulerApp:
             """,
             unsafe_allow_html=True
         )
-        
+
         col1, col2 = st.columns([4, 2])
         self.uploaded_courses_file = col1.file_uploader(
             "קורסים", type=["csv", "xlsx"], key="uploader1", label_visibility='hidden')
@@ -97,7 +97,7 @@ class ExamSchedulerApp:
         # Checking if the end date is before the start date
         if self.end_date < self.start_date:
             st.error("!תאריך הסוף לא יכול להיות מוקדם מתאריך ההתחלה")
-        
+
         self.moed_radio_button = col3.radio('מועד', ['א', 'ב'], key='moed')
         self.semester = col4.radio('סמסטר', [1, 2], key='semester')
 
@@ -112,8 +112,6 @@ class ExamSchedulerApp:
 
         self.df_place = st.columns([1])[0]
 
-            
-
     def on_option_change(self, key):
         print(f"Selected option: {st.session_state[key]}")
 
@@ -123,8 +121,15 @@ class ExamSchedulerApp:
 
     def create_exam_schedule(self):
         print(f'self.moed : {self.moed_radio_button} self.semester : {self.semester} ')
-        if not self.uploaded_courses_file or not self.uploaded_ifunim_file:
-            st.toast(f"חסרים קבצים", icon="⚠️")
+        if self.moed_radio_button == 'ב':
+            if self.uploaded_additional_file is None:
+                st.toast(f"חסר לוח מועד א'", icon="⚠️")
+                return
+        if self.uploaded_courses_file is None:
+            st.toast(f"חסר קובץ קורסים", icon="⚠️")
+            return
+        if self.uploaded_ifunim_file is None:
+            st.toast(f"חסר קובץ אפיונים", icon="⚠️")
             return
         df_ifunim = dp.get_ifunim_dataframe_from_file(self.uploaded_ifunim_file, semester=self.semester)
         df_courses = dp.get_courses_dataframe_from_file(self.uploaded_courses_file)
