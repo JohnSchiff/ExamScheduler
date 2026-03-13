@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>שיבוץ בחינות — כניסה</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background: linear-gradient(135deg, #002060 0%, #004ab3 100%); min-height: 100vh; }
+    .login-card { max-width: 400px; border: none; border-radius: 16px; }
+    .btn-login { background: #002060; border: none; }
+    .btn-login:hover { background: #003087; }
+  </style>
+</head>
+<body class="d-flex align-items-center justify-content-center p-3">
+
+  <div class="login-card card shadow-lg w-100">
+    <div class="card-body p-5">
+
+      <div class="text-center mb-4">
+        <img src="/static/BIU_LOGO.png" alt="אוניברסיטת בר אילן" style="max-height:70px;" class="mb-3">
+        <h5 class="fw-bold mb-0">מערכת שיבוץ בחינות</h5>
+        <p class="text-muted small">אוניברסיטת בר אילן</p>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-danger py-2 text-center small">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ error }}
+      </div>
+      {% endif %}
+
+      <form method="POST" autocomplete="off">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">שם משתמש</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+            <input type="text" name="username" class="form-control" placeholder="הזן שם משתמש" autofocus required>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold small">סיסמה</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+            <input type="password" name="password" class="form-control" placeholder="הזן סיסמה" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-login btn-primary w-100 py-2 fw-semibold">
+          <i class="bi bi-box-arrow-in-right me-2"></i>כניסה למערכת
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

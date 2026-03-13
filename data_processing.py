@@ -240,8 +240,11 @@ def get_unavailable_dates_from_limit_file(limit_file=None):
     return days_to_exclude
 
 
-def get_limitations(fileName, moedAfile=None):
-    df = parse_limit_files(fileName)
+def get_limitations(fileName=None, moedAfile=None):
+    if fileName is None:
+        df = pd.DataFrame(columns=['course', 'course_name', 'start', 'end', 'no_friday', 'blocked'])
+    else:
+        df = parse_limit_files(fileName)
     if moedAfile is not None:  # moed2
         df = parseMoedA(df, moedAfile)
     return df

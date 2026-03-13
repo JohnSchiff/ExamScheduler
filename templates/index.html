@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מערכת שיבוץ בחינות</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root { --biu: #002060; --biu-mid: #004ab3; }
+    body { background: #f0f4f8; }
+
+    .navbar { background: var(--biu) !important; }
+    .navbar-brand img { height: 38px; }
+
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07); }
+    .card-header { background: #fff; font-weight: 600; border-bottom: 2px solid #e8eef7; border-radius: 12px 12px 0 0 !important; }
+
+    .upload-box {
+      border: 2px dashed #b8cce4; border-radius: 10px;
+      padding: 14px; transition: all .2s; background: #fff;
+    }
+    .upload-box:hover { border-color: var(--biu-mid); background: #f5f9ff; }
+    .upload-box.done  { border-color: #198754; background: #f0faf4; }
+    .upload-box.missing { border-color: #dc3545; }
+    .upload-title { font-weight: 600; font-size: .9rem; margin-bottom: 4px; }
+    .upload-hint  { font-size: .78rem; color: #6c757d; margin-bottom: 8px; }
+
+    #btnGenerate {
+      background: var(--biu); border: none;
+      font-size: 1.05rem; padding: 12px 52px; border-radius: 10px;
+    }
+    #btnGenerate:hover:not(:disabled) { background: var(--biu-mid); }
+    #btnGenerate:disabled { background: #9aafc8; }
+
+    #overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 9999;
+      align-items: center; justify-content: center;
+    }
+    #overlay.show { display: flex; }
+    .overlay-box { background: #fff; border-radius: 14px; padding: 36px 52px; text-align: center; }
+
+    .stat-card { border-right: 5px solid var(--biu); border-radius: 10px; padding: 18px 20px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .stat-num  { font-size: 2rem; font-weight: 700; color: var(--biu); }
+    .stat-lbl  { font-size: .82rem; color: #666; }
+
+    .tbl-scroll { max-height: 520px; overflow-y: auto; }
+    .tbl-scroll thead th { position: sticky; top: 0; background: var(--biu); color: #fff; white-space: nowrap; }
+
+    .nav-tabs .nav-link { color: #555; font-weight: 500; }
+    .nav-tabs .nav-link.active { color: var(--biu); font-weight: 700; border-bottom: 3px solid var(--biu); }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="overlay">
+  <div class="overlay-box">
+    <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>
+    <div class="fw-semibold fs-5">מחשב לוח מבחנים...</div>
+    <div class="text-muted small mt-1">אנא המתן, זה עשוי לקחת מספר שניות</div>
+  </div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark px-3 py-2">
+  <span class="navbar-brand d-flex align-items-center gap-2">
+    <img src="/static/BIU_LOGO.png" alt="BIU">
+    <span class="fw-bold fs-5">מערכת שיבוץ בחינות</span>
+  </span>
+  <div class="d-flex align-items-center gap-3">
+    <span class="text-white-50 small">שלום, <strong class="text-white">{{ name }}</strong></span>
+    <a href="/logout" class="btn btn-outline-light btn-sm px-3">
+      <i class="bi bi-box-arrow-right me-1"></i>התנתק
+    </a>
+  </div>
+</nav>
+
+<div class="container-xl py-4">
+
+  <div class="row g-4 mb-4">
+
+    <!-- Settings -->
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header py-3">
+          <i class="bi bi-sliders text-primary me-2"></i>הגדרות לוח המבחנים
+        </div>
+        <div class="card-body p-4">
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <div class="fw-semibold small mb-2">סמסטר</div>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="semester" id="s1" value="1" checked>
+                  <label class="form-check-label" for="s1">א׳</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="semester" id="s2" value="2">
+                  <label class="form-check-label" for="s2">ב׳</label>
+                </div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="fw-semibold small mb-2">מועד</div>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="moed" id="mA" value="א" checked onchange="onMoedChange()">
+                  <label class="form-check-label" for="mA">א׳</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="moed" id="mB" value="ב" onchange="onMoedChange()">
+                  <label class="form-check-label" for="mB">ב׳</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">תאריך התחלה</label>
+            <input type="date" class="form-control" id="startDate" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">תאריך סיום</label>
+            <input type="date" class="form-control" id="endDate" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">
+              פער מינימלי בין בחינות חופפות &nbsp;
+              <span class="badge bg-primary" id="gapLabel">3 ימים</span>
+            </label>
+            <input type="range" class="form-range" min="1" max="7" value="3" id="gapSlider"
+                   oninput="document.getElementById('gapLabel').textContent = this.value + ' ימים'">
+            <div class="d-flex justify-content-between text-muted" style="font-size:.72rem;">
+              <span>1 יום</span><span>7 ימים</span>
+            </div>
+          </div>
+
+          <div id="secondSemDiv" style="display:none;">
+            <label class="form-label fw-semibold small">תחילת הסמסטר (לסינון ימים)</label>
+            <input type="date" class="form-control" id="secondSemStart">
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Files / Manual -->
+    <div class="col-lg-8">
+      <div class="card h-100">
+        <div class="card-header py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <span id="cardInputTitle">
+            <i class="bi bi-folder2-open text-warning me-2"></i>העלאת קבצים
+          </span>
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="inputMode" id="modeFile" value="file" checked autocomplete="off" onchange="onModeChange()">
+            <label class="btn btn-outline-primary" for="modeFile"><i class="bi bi-folder2-open me-1"></i>קבצי Excel</label>
+            <input type="radio" class="btn-check" name="inputMode" id="modeManual" value="manual" autocomplete="off" onchange="onModeChange()">
+            <label class="btn btn-outline-primary" for="modeManual"><i class="bi bi-pencil-square me-1"></i>הזנה ידנית</label>
+          </div>
+        </div>
+        <div class="card-body p-4">
+
+          <!-- FILE SECTION -->
+          <div id="fileSection">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="upload-box" id="box-courses">
+                  <div class="upload-title">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i>
+                    קובץ קורסים <span class="text-danger">*</span>
+                  </div>
+                  <div class="upload-hint">קוד קורס · שם קורס · מספר סטודנטים</div>
+                  <input class="form-control form-control-sm" type="file" id="courses_file" accept=".xlsx"
+                         onchange="onFile(this,'box-courses','st-courses')">
+                  <div id="st-courses" class="mt-1 small"></div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="upload-box" id="box-ifunim">
+                  <div class="upload-title">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i>
+                    קובץ אפיונים <span class="text-danger">*</span>
+                  </div>
+                  <div class="upload-hint">מיפוי קורסים למסלולי לימוד</div>
+                  <input class="form-control form-control-sm" type="file" id="ifunim_file" accept=".xlsx"
+                         onchange="onFile(this,'box-ifunim','st-ifunim')">
+                  <div id="st-ifunim" class="mt-1 small"></div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="upload-box" id="box-limits">
+                  <div class="upload-title">
+                    <i class="bi bi-file-earmark-excel text-secondary me-1"></i>
+                    קובץ אילוצים
+                    <span class="badge bg-secondary fw-normal" style="font-size:.7rem;">רשות</span>
+                  </div>
+                  <div class="upload-hint">תאריכים חסומים לפי קורס</div>
+                  <input class="form-control form-control-sm" type="file" id="limits_file" accept=".xlsx"
+                         onchange="onFile(this,'box-limits','st-limits')">
+                  <div id="st-limits" class="mt-1 small"></div>
+                </div>
+              </div>
+
+              <div class="col-md-6" id="moedABox" style="display:none;">
+                <div class="upload-box" id="box-moeda">
+                  <div class="upload-title">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i>
+                    לוח מועד א׳ <span class="text-danger">*</span>
+                  </div>
+                  <div class="upload-hint">פלט לוח הבחינות ממועד א׳</div>
+                  <input class="form-control form-control-sm" type="file" id="moed_a_file" accept=".xlsx"
+                         onchange="onFile(this,'box-moeda','st-moeda')">
+                  <div id="st-moeda" class="mt-1 small"></div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /fileSection -->
+
+          <!-- MANUAL SECTION -->
+          <div id="manualSection" style="display:none;">
+
+            <!-- Courses table -->
+            <div class="fw-semibold mb-1">
+              <i class="bi bi-book text-primary me-1"></i>קורסים
+              <span class="text-danger">*</span>
+            </div>
+            <div class="text-muted small mb-2">
+              מסלולים — רשום קודים מופרדים בפסיק, לדוגמה: <code>101,202,303</code>
+            </div>
+            <div class="table-responsive mb-2" style="max-height:260px;overflow-y:auto;">
+              <table class="table table-sm table-bordered align-middle mb-0" id="coursesTable">
+                <thead class="table-light">
+                  <tr>
+                    <th style="min-width:100px;">קוד קורס</th>
+                    <th style="min-width:160px;">שם קורס</th>
+                    <th style="min-width:90px;">מס׳ סטודנטים</th>
+                    <th style="min-width:180px;">מסלולים (מופרדים בפסיק)</th>
+                    <th style="width:40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="coursesBody"></tbody>
+              </table>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm mb-4" onclick="addCourseRow()">
+              <i class="bi bi-plus-lg me-1"></i>הוסף קורס
+            </button>
+
+            <!-- Limits table -->
+            <div class="fw-semibold mb-1">
+              <i class="bi bi-slash-circle text-danger me-1"></i>אילוצים
+              <span class="badge bg-secondary fw-normal" style="font-size:.7rem;">רשות</span>
+            </div>
+            <div class="text-muted small mb-2">
+              לכל שדה תאריך — ניתן להשאיר ריק. למועד ב׳, הגדר תאריך התחלה = תאריך מועד א׳ + 25 ימים.
+            </div>
+            <div class="table-responsive mb-2" style="max-height:220px;overflow-y:auto;">
+              <table class="table table-sm table-bordered align-middle mb-0" id="limitsTable">
+                <thead class="table-light">
+                  <tr>
+                    <th style="min-width:100px;">קוד קורס</th>
+                    <th style="min-width:130px;">תאריך התחלה</th>
+                    <th style="min-width:130px;">תאריך סיום</th>
+                    <th style="min-width:130px;">תאריך חסום</th>
+                    <th style="min-width:80px;">ללא שישי</th>
+                    <th style="width:40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="limitsBody"></tbody>
+              </table>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addLimitRow()">
+              <i class="bi bi-plus-lg me-1"></i>הוסף אילוץ
+            </button>
+
+          </div><!-- /manualSection -->
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <div class="text-center mb-5">
+    <button id="btnGenerate" class="btn btn-primary text-white fw-bold" onclick="generate()">
+      <i class="bi bi-calendar-check me-2"></i>צור לוח מבחנים
+    </button>
+    <div id="errMsg" class="text-danger mt-2 small fw-semibold"></div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" style="display:none;">
+
+    <h5 class="fw-bold mb-3" id="resultsTitle"></h5>
+
+    <div class="row g-3 mb-4" id="statsRow"></div>
+
+    <div id="unscheduledBlock" class="mb-3"></div>
+
+    <div class="card">
+      <div class="card-header py-0">
+        <ul class="nav nav-tabs border-0">
+          <li class="nav-item">
+            <button class="nav-link active px-4 py-3" id="tab1" onclick="switchTab(1)">
+              <i class="bi bi-list-ul me-1"></i>לוח לפי תאריך
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link px-4 py-3" id="tab2" onclick="switchTab(2)">
+              <i class="bi bi-table me-1"></i>לוח לפי מסלול
+            </button>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body p-3">
+
+        <div id="pane1">
+          <div class="tbl-scroll">
+            <table class="table table-striped table-hover table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>תאריך</th><th>יום</th><th>קוד קורס</th>
+                  <th>שם קורס</th><th>מספר סטודנטים</th>
+                </tr>
+              </thead>
+              <tbody id="flatBody"></tbody>
+            </table>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-success btn-sm" onclick="dlExcel('flat')">
+              <i class="bi bi-download me-1"></i>הורד לוח בחינות (Excel)
+            </button>
+          </div>
+        </div>
+
+        <div id="pane2" style="display:none;">
+          <div class="tbl-scroll">
+            <table class="table table-bordered table-sm mb-0">
+              <thead><tr id="pgHead"></tr></thead>
+              <tbody id="pgBody"></tbody>
+            </table>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-success btn-sm" onclick="dlExcel('programs')">
+              <i class="bi bi-download me-1"></i>הורד לפי מסלולים (Excel)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let _excelFlat, _excelPg, _label;
+
+function onFile(input, boxId, stId) {
+  const box = document.getElementById(boxId);
+  const st  = document.getElementById(stId);
+  if (input.files?.[0]) {
+    box.classList.add('done');
+    box.classList.remove('missing');
+    st.innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> ${input.files[0].name}`;
+  } else {
+    box.classList.remove('done');
+    st.innerHTML = '';
+  }
+}
+
+function isManualMode() {
+  return document.getElementById('modeManual').checked;
+}
+
+function onModeChange() {
+  const manual = isManualMode();
+  document.getElementById('fileSection').style.display   = manual ? 'none'  : 'block';
+  document.getElementById('manualSection').style.display = manual ? 'block' : 'none';
+  document.getElementById('cardInputTitle').innerHTML = manual
+    ? '<i class="bi bi-pencil-square text-primary me-2"></i>הזנה ידנית'
+    : '<i class="bi bi-folder2-open text-warning me-2"></i>העלאת קבצים';
+}
+
+function onMoedChange() {
+  const isB = document.getElementById('mB').checked;
+  document.getElementById('moedABox').style.display     = isB ? 'block' : 'none';
+  document.getElementById('secondSemDiv').style.display = isB ? 'block' : 'none';
+}
+
+// ── Manual table helpers ───────────────────────────────────────────────────────
+function addCourseRow() {
+  const tbody = document.getElementById('coursesBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="number" class="form-control form-control-sm" placeholder="66101" min="1"></td>
+    <td><input type="text"   class="form-control form-control-sm" placeholder="שם הקורס"></td>
+    <td><input type="number" class="form-control form-control-sm" placeholder="0" min="0" value="0"
+        oninput="if(this.value<0)this.value=0"></td>
+    <td><input type="text"   class="form-control form-control-sm" placeholder="101,202,303"></td>
+    <td><button type="button" class="btn btn-outline-danger btn-sm px-2 py-0"
+        onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>`;
+  tbody.appendChild(tr);
+  tr.querySelector('input').focus();
+}
+
+function addLimitRow() {
+  const tbody = document.getElementById('limitsBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="number" class="form-control form-control-sm" placeholder="66101" min="1"></td>
+    <td><input type="date"   class="form-control form-control-sm"></td>
+    <td><input type="date"   class="form-control form-control-sm"></td>
+    <td><input type="date"   class="form-control form-control-sm"></td>
+    <td class="text-center"><input type="checkbox" class="form-check-input"></td>
+    <td><button type="button" class="btn btn-outline-danger btn-sm px-2 py-0"
+        onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>`;
+  tbody.appendChild(tr);
+  tr.querySelector('input').focus();
+}
+
+function collectCourses() {
+  return Array.from(document.querySelectorAll('#coursesBody tr')).map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    const students = parseInt(inputs[2].value || '0', 10);
+    if (students < 0) {
+      throw new Error(`מספר סטודנטים לא יכול להיות שלילי (קורס ${inputs[0].value.trim()})`);
+    }
+    return {
+      code:     inputs[0].value.trim(),
+      name:     inputs[1].value.trim(),
+      students: String(students),
+      programs: inputs[3].value.trim(),
+    };
+  });
+}
+
+function collectLimits() {
+  return Array.from(document.querySelectorAll('#limitsBody tr')).map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    return {
+      code:      inputs[0].value.trim(),
+      start:     inputs[1].value || null,
+      end:       inputs[2].value || null,
+      blocked:   inputs[3].value || null,
+      no_friday: inputs[4].checked,
+    };
+  }).filter(l => l.code);
+}
+
+function switchTab(n) {
+  document.getElementById('pane1').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('pane2').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('tab1').classList.toggle('active', n === 1);
+  document.getElementById('tab2').classList.toggle('active', n === 2);
+}
+
+function dlExcel(type) {
+  const b64 = type === 'flat' ? _excelFlat : _excelPg;
+  if (!b64) return;
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const blob  = new Blob([bytes], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a     = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: (type === 'flat' ? 'לוח_בחינות_' : 'מסלולים_') + _label.replace(/ /g, '_') + '.xlsx',
+  });
+  a.click();
+}
+
+async function generate() {
+  const errDiv = document.getElementById('errMsg');
+  errDiv.innerHTML = '';
+
+  const start = document.getElementById('startDate').value;
+  const end   = document.getElementById('endDate').value;
+  const isB   = document.getElementById('mB').checked;
+  const errs  = [];
+
+  if (!start || !end) errs.push('יש למלא תאריכי התחלה וסיום');
+  else if (start >= end) errs.push('תאריך הסיום חייב להיות אחרי תאריך ההתחלה');
+
+  let fetchUrl, fetchOpts;
+
+  if (isManualMode()) {
+    // ── Manual mode ──────────────────────────────────────────────────────────
+    let courses;
+    try { courses = collectCourses(); }
+    catch (e) { errs.push(e.message); courses = []; }
+    if (!courses.length && !errs.length) errs.push('יש להזין לפחות קורס אחד');
+    else if (courses.some(c => !c.code || !c.programs))
+      errs.push('יש למלא קוד קורס ומסלולים לכל השורות');
+
+    if (errs.length) {
+      errDiv.innerHTML = errs.map(e => `<div><i class="bi bi-exclamation-circle me-1"></i>${e}</div>`).join('');
+      return;
+    }
+
+    const payload = {
+      courses,
+      limits:    collectLimits(),
+      semester:  document.querySelector('input[name="semester"]:checked').value,
+      moed:      document.querySelector('input[name="moed"]:checked').value,
+      start_date: start,
+      end_date:   end,
+      gap:        document.getElementById('gapSlider').value,
+      second_semester_start: document.getElementById('secondSemStart')?.value || null,
+    };
+    fetchUrl  = '/generate_manual';
+    fetchOpts = {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    };
+
+  } else {
+    // ── File mode ─────────────────────────────────────────────────────────────
+    ['box-courses','box-ifunim','box-moeda'].forEach(id => {
+      document.getElementById(id)?.classList.remove('missing');
+    });
+    const courses = document.getElementById('courses_file').files?.[0];
+    const ifunim  = document.getElementById('ifunim_file').files?.[0];
+    const moedA   = document.getElementById('moed_a_file')?.files?.[0];
+
+    if (!courses) { errs.push('יש להעלות קובץ קורסים'); document.getElementById('box-courses').classList.add('missing'); }
+    if (!ifunim)  { errs.push('יש להעלות קובץ אפיונים'); document.getElementById('box-ifunim').classList.add('missing'); }
+    if (isB && !moedA) { errs.push('למועד ב יש להעלות את לוח מועד א׳'); document.getElementById('box-moeda').classList.add('missing'); }
+
+    if (errs.length) {
+      errDiv.innerHTML = errs.map(e => `<div><i class="bi bi-exclamation-circle me-1"></i>${e}</div>`).join('');
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('courses_file', courses);
+    fd.append('ifunim_file',  ifunim);
+    const limits = document.getElementById('limits_file').files?.[0];
+    if (limits)       fd.append('limits_file',  limits);
+    if (isB && moedA) fd.append('moed_a_file',  moedA);
+    fd.append('semester',   document.querySelector('input[name="semester"]:checked').value);
+    fd.append('moed',       document.querySelector('input[name="moed"]:checked').value);
+    fd.append('start_date', start);
+    fd.append('end_date',   end);
+    fd.append('gap',        document.getElementById('gapSlider').value);
+    const ss = document.getElementById('secondSemStart')?.value;
+    if (ss) fd.append('second_semester_start', ss);
+
+    fetchUrl  = '/generate';
+    fetchOpts = { method: 'POST', body: fd };
+  }
+
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('btnGenerate').disabled = true;
+
+  try {
+    const resp = await fetch(fetchUrl, fetchOpts);
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      errDiv.innerHTML = `<i class="bi bi-x-circle me-1"></i>${data.error}`;
+      return;
+    }
+    renderResults(data);
+  } catch (e) {
+    errDiv.innerHTML = `<i class="bi bi-x-circle me-1"></i>שגיאת תקשורת: ${e.message}`;
+  } finally {
+    document.getElementById('overlay').classList.remove('show');
+    document.getElementById('btnGenerate').disabled = false;
+  }
+}
+
+function renderResults(d) {
+  _excelFlat = d.excel_flat;
+  _excelPg   = d.excel_programs;
+  _label     = d.label;
+
+  document.getElementById('resultsTitle').textContent = `תוצאות — ${d.label}`;
+
+  const statsDef = [
+    { lbl: 'קורסים שובצו',     val: d.stats.scheduled,   icon: 'bi-check-circle-fill',       col: 'text-success' },
+    { lbl: 'סה"כ קורסים',     val: d.stats.total,        icon: 'bi-book-fill',               col: 'text-primary' },
+    { lbl: 'ימי בחינה',       val: d.stats.exam_days,    icon: 'bi-calendar3',               col: 'text-info'    },
+    { lbl: 'קורסים לא שובצו', val: d.stats.unscheduled,  icon: 'bi-exclamation-circle-fill',
+      col: d.stats.unscheduled > 0 ? 'text-danger' : 'text-success' },
+  ];
+  document.getElementById('statsRow').innerHTML = statsDef.map(s => `
+    <div class="col-6 col-xl-3">
+      <div class="stat-card d-flex align-items-center gap-3">
+        <i class="bi ${s.icon} fs-1 ${s.col}"></i>
+        <div><div class="stat-num">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>
+      </div>
+    </div>`).join('');
+
+  const ub = document.getElementById('unscheduledBlock');
+  if (d.unscheduled.length) {
+    const li = d.unscheduled.map(u => `<li class="small">${u.code} — ${u.name}</li>`).join('');
+    ub.innerHTML = `<div class="alert alert-warning">
+      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>${d.unscheduled.length} קורסים לא שובצו:</strong>
+      <ul class="mb-0 mt-1">${li}</ul></div>`;
+  } else {
+    ub.innerHTML = `<div class="alert alert-success py-2 small">
+      <i class="bi bi-check-circle-fill me-1"></i>כל הקורסים שובצו בהצלחה!</div>`;
+  }
+
+  document.getElementById('flatBody').innerHTML = d.rows.map(r => `
+    <tr>
+      <td>${r.date}</td><td>${r.day}</td>
+      <td><code>${r.code}</code></td><td>${r.name}</td>
+      <td class="text-end">${r.students.toLocaleString()}</td>
+    </tr>`).join('');
+
+  document.getElementById('pgHead').innerHTML =
+    d.program_columns.map(c => `<th>${c}</th>`).join('');
+  document.getElementById('pgBody').innerHTML = d.programs.map(row =>
+    '<tr>' + d.program_columns.map(c => `<td>${row[c] ?? ''}</td>`).join('') + '</tr>'
+  ).join('');
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+  switchTab(1);
+}
+</script>
+</body>
+</html>

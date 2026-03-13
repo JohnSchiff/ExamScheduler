@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/
+.streamlit/
+build/
+*.xlsx
+*.csv
+debug.ipynb
+.alias_git.sh
+converted_kod.xlsx
