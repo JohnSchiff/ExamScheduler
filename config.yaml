@@ -7,7 +7,7 @@ credentials:
     yschiff:
       email: john5754@gmail.com
       name: John Schiff
-      password: $2b$12$UHHZexSmScBqLQ2o2skhMeWzZhPwRo3xSTG/lrsAj.Byoe/U9J9Pu 
+      password: $2b$12$.VJ24GePoHDGtDXzlpf9FeP/wmKUV4rmZVWXPMLvReLCi0Uhc8PsK
 cookie:
   expiry_days: 0
   key: random_signature_key # Must be string

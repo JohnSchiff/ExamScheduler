@@ -14,8 +14,6 @@ class ExamScheduler:
             self.students_per_course_dict = dict(zip(df_courses['course_code'], df_courses['num_of_students']))
         else:
             self.students_per_course_dict = {code: 0 for code in df_courses['course_code']}
-        self.df = dp.merge_ifunim_and_coursim(self.df_ifunim, self.df_courses)
-
         self.limitations = limitations
         self.no_friday_courses = self.limitations[self.limitations['no_friday'] == 1]['course'].values
         ## Dates ##
@@ -53,11 +51,6 @@ class ExamScheduler:
         self.Ndates = len(self.exam_schedule_table)
         self.scheduled_courses = []
         self.maxAday = 1  # helps to spread the courses over the period
-
-        # Build a date->index lookup for fast access
-        self._date_to_index = {}
-        for idx, row in self.exam_schedule_table.iterrows():
-            self._date_to_index[row['date']] = idx
 
     def strict_condition_3_days(self, row, course):
         current_date = row['date']
@@ -476,10 +469,6 @@ class ExamScheduler:
         exam_schedule_table['code'] = [[] for _ in range(len(exam_schedule_table))]
         exam_schedule_table['descriptions'] = [[] for _ in range(len(exam_schedule_table))]
 
-        if self.end_date is not None:
-            self.df_second_exam = exam_schedule_table.loc[
-                exam_schedule_table.date > pd.to_datetime(self.end_date)]
-
         return exam_schedule_table
 
     def update_restrictions(self, course: int, current_date):
@@ -524,21 +513,6 @@ class ExamScheduler:
                             f'conflicts with {current_course} on {current_date} gap: {self.gap}')
 
         logger.add_remark(f'Validation passed: gap of {self.gap} days is OK')
-
-    def prepare_results_to_export(self, df):
-        df = df.copy()
-        df.loc[:, 'name'] = df['code'].apply(lambda x: [self.code_dict[code] for code in x])
-        df = df[['descriptions', 'code', 'name', 'date']]
-        df['date'] = df['date'].dt.strftime('%Y-%m-%d')
-
-        result_table_dict = {
-            'descriptions': 'הערות',
-            'code': 'קוד קורס',
-            'name': 'שם קורס',
-            'date': 'תאריך',
-        }
-        df.columns = df.columns.map(result_table_dict)
-        return df
 
     def initialRestrictions(self, allCourses):
         restrict = {}
