@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Does
 
-University exam scheduling system for Bar-Ilan University. It reads course data from Hebrew Excel files, applies scheduling constraints, and produces an optimized exam timetable that avoids conflicts between overlapping programs. There is both a CLI entry point (`main.py`) and a Streamlit web UI (`web_ui.py`).
+University exam scheduling system for Bar-Ilan University. It reads course data from Hebrew Excel files, applies scheduling constraints, and produces an optimized exam timetable that avoids conflicts between overlapping programs. There is a Flask web UI (`app.py`) and a CLI entry point (`main.py`).
 
 ## Commands
 
@@ -13,9 +13,14 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Run the Streamlit web UI (primary interface):
+Run the Flask web UI (primary interface):
 ```bash
-streamlit run web_ui.py
+python app.py
+```
+
+Run with gunicorn (production):
+```bash
+gunicorn app:app
 ```
 
 Run CLI scheduling (edit parameters at top of file first):
@@ -43,7 +48,7 @@ python -m unittest test_exam_scheduler.py
 
 - **`data_processing.py`** — All file I/O and DataFrame transformations. Reads Hebrew-column Excel files and normalizes them to English column names. Key functions: `get_ifunim_dataframe_from_file`, `get_courses_dataframe_from_file`, `get_limitations`, `gen_crossed_courses_dict_from_prog_dict`.
 
-- **`web_ui.py`** — Streamlit app (`ExamSchedulerApp`). Login via `streamlit_authenticator` using `config.yaml`. Accepts three file uploads (courses, characteristics/ifunim, constraints/limitations), date range, moed (A/B), and semester inputs.
+- **`app.py`** — Flask web app. Login via bcrypt + `config.yaml`. Routes: `/login`, `/logout`, `/scheduler`, `/generate` (file upload), `/generate_manual` (manual JSON entry). Returns JSON with schedule rows, program breakdown, Excel exports (base64), and unscheduled courses.
 
 - **`main.py`** — CLI script. Parameters (semester, moed, date ranges, file names) are hardcoded at the top of the file. Outputs four Excel files: `df_ifunim`, `programs`, `exam_schedule`, `TablePerPrograms`.
 
@@ -61,11 +66,10 @@ For Moed B, the Moed A schedule file is passed to `get_limitations()` via `parse
 
 ### Authentication
 
-`config.yaml` holds bcrypt-hashed credentials for `streamlit_authenticator`. To add users, hash passwords with `stauth.Hasher(['plaintext']).generate()` and add entries manually.
+`config.yaml` holds bcrypt-hashed credentials. To add users, hash passwords with `bcrypt.hashpw(b'plaintext', bcrypt.gensalt()).decode()` and add entries manually under `credentials.usernames`.
 
 ### Other files
 
 - **`Logger.py`** — Simple in-memory logger with `add_remark` / `save_to_file` / `print_log`. A module-level `logger` singleton is exported and used across the codebase.
 - **`test_schedule.py`** — Older integration test script; requires a pre-generated `test_exam_schedule.xlsx`. Less maintained than `test_exam_scheduler.py`.
 - **`read_from_xl_file.py`** — One-off scratch script, not used in production.
-- **`app.py`** — Unrelated Flask prototype, not used in production.
